@@ -20,6 +20,7 @@ import { AuditLogModule } from './modules/audit-log/audit-log.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { ReportIssueModule } from './modules/report-issue/report-issue.module';
 import { NotificationModule } from './modules/notification/notification.module';
+import { ReviewTagModule } from './modules/review-tag/review-tag.module';
 
 @Module({
   imports: [
@@ -40,7 +41,7 @@ import { NotificationModule } from './modules/notification/notification.module';
     ChatModule,
     ReportIssueModule,
     NotificationModule,
-
+    ReviewTagModule
   ],
 })
 export class AppModule {}
