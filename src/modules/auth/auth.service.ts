@@ -1,68 +1,51 @@
-import {
-  Injectable,
-  UnauthorizedException,
-  ConflictException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import * as bcrypt from 'bcrypt';
-
+import { UsersService } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
-import { User } from '../user/user.interface';
+import * as bcrypt from 'bcrypt';
+import { Role } from '@common/constants/role.enum';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly jwtService: JwtService,
-    @InjectModel('User') private readonly userModel: Model<User>
+    private readonly usersService: UsersService,
+    private readonly jwtService: JwtService
   ) {}
 
-  async register(dto: RegisterDto): Promise<Partial<User>> {
-    const existing = await this.userModel.findOne({ phone: dto.phone });
-    if (existing) throw new ConflictException('Phone already exists');
+  async validateUser(phone: string, pass: string): Promise<any> {
+    const user = await this.usersService.findByPhone(phone);
+    if (user && (await bcrypt.compare(pass, user.password))) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password, ...result } = user;
+      return result;
+    }
+    return null;
+  }
 
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
+  async phoneCheck(phone: string): Promise<any> {
+    const user = await this.usersService.findByPhone(phone);
+    if (user) {
+      return user;
+    }
+    return null;
+  }
 
-    const user = await this.userModel.create({
-      phone: dto.phone,
-      email: dto.email,
-      password: hashedPassword,
-      role: dto.role,
-      created_at: new Date(),
-    });
-
+  async login(user: any) {
+    const payload = { name: user.name, sub: user.id, role: user.role };
     return {
-      _id: user._id,
-      phone: user.phone,
-      email: user.email,
-      role: user.role,
+      access_token: this.jwtService.sign(payload),
     };
   }
 
-  async login(dto: LoginDto): Promise<{
-    access_token: string;
-    refresh_token: string;
-    user: Partial<User>;
-  }> {
-    const user = await this.userModel.findOne({ phone: dto.phone });
-
-    if (!user || !(await bcrypt.compare(dto.password, user.password))) {
-      throw new UnauthorizedException('Invalid phone or password');
-    }
-
-    const payload = { user_id: user._id, role: user.role };
-
-    return {
-      access_token: this.jwtService.sign(payload, { expiresIn: '1h' }),
-      refresh_token: this.jwtService.sign(payload, { expiresIn: '7d' }),
-      user: {
-        _id: user._id,
-        phone: user.phone,
-        email: user.email,
-        role: user.role,
-      },
-    };
+  async register(dto: RegisterDto) {
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const user = await this.usersService.create({
+      ...dto,
+      password: hashedPassword,
+      role: Role.User,
+    });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, ...result } = user;
+    return result;
   }
 }

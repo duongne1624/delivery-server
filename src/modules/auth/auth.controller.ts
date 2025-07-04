@@ -1,35 +1,39 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Body, Controller, Post } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { User } from '../user/user.interface';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { RegisterDto } from './dto/register.dto';
 
-@ApiTags('Authentication')
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post('register')
-  @ApiOperation({ summary: 'Đăng ký tài khoản mới' })
-  @ApiBody({ type: RegisterDto })
-  @ApiResponse({ status: 201, description: 'Tạo tài khoản thành công' })
-  async register(@Body() dto: RegisterDto): Promise<Partial<User>> {
-    return this.authService.register(dto);
+  @Post('login')
+  @ApiOperation({ summary: 'Login with phone and password' })
+  @ApiResponse({ status: 200, description: 'Return access and refresh tokens' })
+  @ApiResponse({ status: 401, description: 'Invalid credentials' })
+  async login(@Body() loginDto: LoginDto) {
+    const user = await this.authService.validateUser(
+      loginDto.phone,
+      loginDto.password
+    );
+    if (!user) {
+      throw new Error('Invalid credentials');
+    }
+    return this.authService.login(user);
   }
 
-  @Post('login')
-  @ApiOperation({ summary: 'Đăng nhập tài khoản' })
-  @ApiBody({ type: LoginDto })
-  @ApiResponse({
-    status: 200,
-    description: 'Đăng nhập thành công, trả về token và thông tin người dùng',
-  })
-  async login(@Body() dto: LoginDto): Promise<{
-    access_token: string;
-    refresh_token: string;
-    user: Partial<User>;
-  }> {
-    return this.authService.login(dto);
+  @Post('register')
+  @ApiOperation({ summary: 'Register new user' })
+  @ApiResponse({ status: 201, description: 'User created successfully' })
+  @ApiResponse({ status: 400, description: 'Phone number already exists' })
+  async register(@Body() registerDto: RegisterDto) {
+    const user = await this.authService.phoneCheck(registerDto.phone);
+    if (user) {
+      throw new Error('Số điện thoại đã tồn tại.');
+    }
+
+    return this.authService.register(registerDto);
   }
 }

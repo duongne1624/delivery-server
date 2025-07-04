@@ -2,9 +2,9 @@ import { Request } from 'express';
 
 export interface AuthRequest extends Request {
   user: {
-    user_id: string;
-    role: string;
-    phone?: string;
+    userId: string;
+    role: 'admin' | 'user' | 'shipper';
+    name?: string;
     email?: string;
   };
 }
