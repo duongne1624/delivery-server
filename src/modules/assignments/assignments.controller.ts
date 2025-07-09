@@ -14,7 +14,7 @@ import { RolesGuard } from '@common/guards/roles.guard';
 import { AuthRequest } from '@common/interfaces/auth-request.interface';
 import { AssignmentsService } from './assignments.service';
 import { RedisService } from '@shared/redis/redis.service';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { RespondAssignmentDto } from './dto/respond-assignment.dto';
 
 @Controller('assignments')
@@ -28,6 +28,7 @@ export class AssignmentsController {
   @Roles(Role.Shipper)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
+  @ApiOperation({ summary: 'Response from shipper' })
   async respondToAssignment(
     @Param('orderId') orderId: string,
     @Body() body: RespondAssignmentDto,
@@ -49,6 +50,7 @@ export class AssignmentsController {
   @Roles(Role.Admin)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
+  @ApiOperation({ summary: 'Find a shipper to assign' })
   async autoAssign(@Param('orderId') orderId: string, @Req() req: AuthRequest) {
     console.log('req.user:', req.user);
 

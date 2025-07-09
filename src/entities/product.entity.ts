@@ -6,9 +6,11 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   JoinColumn,
+  OneToMany,
 } from 'typeorm';
 import { Restaurant } from '@entities/restaurant.entity';
 import { Category } from '@entities/category.entity';
+import { OrderItem } from './order-item.entity';
 
 @Entity('products')
 export class Product {
@@ -63,4 +65,7 @@ export class Product {
 
   @UpdateDateColumn()
   updated_at: Date;
+
+  @OneToMany(() => OrderItem, (oi) => oi.product)
+  orderItems: OrderItem[];
 }

@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Body,
   Param,
   UseGuards,
@@ -66,6 +67,7 @@ export class OrdersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.Admin, Role.User, Role.Shipper)
   @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get order by Id' })
   async getOrderById(
     @Param('id') id: string,
     @Req() req: AuthRequest
@@ -75,19 +77,33 @@ export class OrdersController {
     const user = req.user;
 
     const isOwner = order.customer?.id === user.userId;
-    console.log(user.userId);
     const isAdmin = user.role === Role.Admin;
     const isShipper = order.shipper?.id === user.userId;
-
-    console.log(
-      `isOwner: ${isOwner}, isAdmin: ${isAdmin}, isShipper: ${isShipper}`
-    );
 
     if (!isOwner && !isAdmin && !isShipper) {
       throw new ForbiddenException('You are not allowed to view this order');
     }
 
     return order;
+  }
+
+  @Patch(':id/cancel-by-user')
+  @Roles(Role.User)
+  @ApiOperation({ summary: 'Canceled order by user with pending status' })
+  @ApiResponse({ status: 204, description: 'Order info' })
+  async cancelByUser(@Param('id') orderId: string, @Req() req: AuthRequest) {
+    return this.ordersService.cancelByUser(orderId, req.user.userId);
+  }
+
+  @Patch(':id/complete-by-shipper')
+  @Roles(Role.Shipper)
+  @ApiOperation({ summary: 'Confirm order is completed' })
+  @ApiResponse({ status: 204, description: 'Order info' })
+  async completeByShipper(
+    @Param('id') orderId: string,
+    @Req() req: AuthRequest
+  ) {
+    return this.ordersService.completeByShipper(orderId, req.user.userId);
   }
 
   @Delete(':id')

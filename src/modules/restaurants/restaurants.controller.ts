@@ -9,12 +9,14 @@ import {
   UseGuards,
   Req,
   ForbiddenException,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiBearerAuth,
   ApiResponse,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { RestaurantsService } from './restaurants.service';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
@@ -35,6 +37,25 @@ export class RestaurantsController {
   @ApiResponse({ status: 200, description: 'List of all restaurants' })
   async findAll() {
     return this.restaurantsService.findAll();
+  }
+
+  @Get('paginate')
+  @ApiOperation({ summary: 'Phân trang danh sách nhà hàng' })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
+  async paginate(@Query('page') page = 1, @Query('limit') limit = 10) {
+    const [data, total] = await this.restaurantsService.paginate(+page, +limit);
+    return {
+      data,
+      total,
+      page: +page,
+      limit: +limit,
+    };
+  }
+
+  @Get('top-selling')
+  async getTopSellingRestaurants() {
+    return this.restaurantsService.getTopSellingRestaurants();
   }
 
   @Get(':id')
@@ -90,5 +111,23 @@ export class RestaurantsController {
         'You are not allowed to modify this restaurant'
       );
     }
+  }
+
+  @Get('paginate-by-product-category/:categoryId')
+  @ApiOperation({ summary: 'Get restaurants with product in category' })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
+  async getByProductCategory(
+    @Param('categoryId') categoryId: string,
+    @Query('page') page = 1,
+    @Query('limit') limit = 10
+  ) {
+    const [data, total] =
+      await this.restaurantsService.paginateByProductCategory(
+        categoryId,
+        +page,
+        +limit
+      );
+    return { data, total, page: +page, limit: +limit };
   }
 }

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Order } from '@entities/order.entity';
@@ -146,4 +150,42 @@ export class OrdersService {
       })),
     };
   };
+
+  async cancelByUser(
+    orderId: string,
+    userId: string
+  ): Promise<OrderResponseDto> {
+    const order = await this.orderRepo.findOne({
+      where: { id: orderId },
+      relations: ['customer', 'shipper', 'items', 'items.product'],
+    });
+
+    if (!order) throw new NotFoundException('Không tìm thấy đơn hàng');
+    if (order.customer.id !== userId)
+      throw new ForbiddenException('Bạn không có quyền hủy đơn này');
+    if (order.status !== 'pending')
+      throw new ForbiddenException('Chỉ được hủy đơn khi đang chờ xử lý');
+
+    order.status = 'cancelled';
+    const saved = await this.orderRepo.save(order);
+    return this.mapOrderToDto(saved);
+  }
+
+  async completeByShipper(
+    orderId: string,
+    shipperId: string
+  ): Promise<OrderResponseDto> {
+    const order = await this.orderRepo.findOne({
+      where: { id: orderId },
+      relations: ['customer', 'shipper', 'items', 'items.product'],
+    });
+
+    if (!order) throw new NotFoundException('Không tìm thấy đơn hàng');
+    if (order.shipper?.id !== shipperId)
+      throw new ForbiddenException('Bạn không được phép xác nhận đơn này');
+
+    order.status = 'completed';
+    const saved = await this.orderRepo.save(order);
+    return this.mapOrderToDto(saved);
+  }
 }

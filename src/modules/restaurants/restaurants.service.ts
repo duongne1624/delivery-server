@@ -39,4 +39,51 @@ export class RestaurantsService {
     await this.restaurantRepo.update(id, { is_active: false });
     return this.findById(id);
   }
+
+  async paginate(page = 1, limit = 10): Promise<[Restaurant[], number]> {
+    return this.restaurantRepo.findAndCount({
+      order: { created_at: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+  }
+
+  async paginateByProductCategory(
+    categoryId: string,
+    page = 1,
+    limit = 10
+  ): Promise<[Restaurant[], number]> {
+    const qb = this.restaurantRepo
+      .createQueryBuilder('restaurant')
+      .innerJoin('restaurant.products', 'product')
+      .where('product.category_id = :categoryId', { categoryId })
+      .skip((page - 1) * limit)
+      .take(limit)
+      .groupBy('restaurant.id')
+      .addGroupBy('restaurant.name')
+      .addGroupBy('restaurant.address')
+      .addGroupBy('restaurant.created_at');
+
+    const [data, count] = await qb.getManyAndCount();
+    return [data, count];
+  }
+
+  async getTopSellingRestaurants(limit = 10) {
+    return this.restaurantRepo
+      .createQueryBuilder('r')
+      .innerJoin('r.products', 'p')
+      .innerJoin('p.orderItems', 'oi')
+      .innerJoin('oi.order', 'o')
+      .where('o.status = :status', { status: 'completed' })
+      .select('r.id', 'id')
+      .addSelect('r.name', 'name')
+      .addSelect('r.image', 'image')
+      .addSelect('r.address', 'address')
+      .addSelect('COUNT(DISTINCT o.id)', 'total_orders')
+      .groupBy('r.id')
+      .addGroupBy('r.name')
+      .orderBy('total_orders', 'DESC')
+      .limit(limit)
+      .getRawMany();
+  }
 }

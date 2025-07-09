@@ -9,12 +9,14 @@ import {
   UseGuards,
   ForbiddenException,
   Req,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiBearerAuth,
   ApiResponse,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
 import { RestaurantsService } from '@modules/restaurants/restaurants.service';
@@ -40,6 +42,13 @@ export class ProductsController {
     return this.productsService.findAll();
   }
 
+  @Get('top-selling')
+  @ApiOperation({ summary: 'Get top 10 selling products' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
+  async getTopSellingProducts(@Query('limit') limit = 10) {
+    return this.productsService.getTopSellingProducts(limit);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get product by ID' })
   async findOne(@Param('id') id: string) {
@@ -54,6 +63,7 @@ export class ProductsController {
   @ApiResponse({ status: 201, description: 'Product created successfully' })
   async create(@Body() dto: CreateProductDto, @Req() req: AuthRequest) {
     const restaurant = await this.restaurantsService.findById(
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       dto.restaurant_id
     );
 

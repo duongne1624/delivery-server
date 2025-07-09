@@ -26,6 +26,8 @@ import { Roles } from '@common/decorators/roles.decorator';
 import { Role } from '@common/constants/role.enum';
 import { AuthRequest } from '@common/interfaces/auth-request.interface';
 import { UpdateActiveDto } from './dto/update-active.dto';
+import { SafeUser } from './interfaces/safe-user.interface';
+import { MeResponseDto } from './dto/me-response.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -44,6 +46,27 @@ export class UsersController {
       throw new ForbiddenException('Bạn không có quyền truy cập');
     }
     return this.usersService.findAll();
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current user info' })
+  @ApiResponse({ status: 200, type: MeResponseDto })
+  async getCurrentUser(@Req() req: AuthRequest): Promise<SafeUser> {
+    const user = await this.usersService.findById(req.user.userId);
+    if (!user) throw new NotFoundException('User not found');
+
+    return {
+      id: user.id,
+      name: user.name,
+      phone: user.phone,
+      email: user.email,
+      role: user.role,
+      is_active: user.is_active,
+      created_at: user.created_at,
+      updated_at: user.updated_at,
+    };
   }
 
   @Get(':id')
