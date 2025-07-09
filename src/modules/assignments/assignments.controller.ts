@@ -15,6 +15,7 @@ import { AuthRequest } from '@common/interfaces/auth-request.interface';
 import { AssignmentsService } from './assignments.service';
 import { RedisService } from '@shared/redis/redis.service';
 import { ApiBearerAuth } from '@nestjs/swagger';
+import { RespondAssignmentDto } from './dto/respond-assignment.dto';
 
 @Controller('assignments')
 export class AssignmentsController {
@@ -25,15 +26,21 @@ export class AssignmentsController {
 
   @Post(':orderId/respond')
   @Roles(Role.Shipper)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth()
   async respondToAssignment(
     @Param('orderId') orderId: string,
-    @Body() body: { response: 'accepted' | 'rejected' },
+    @Body() body: RespondAssignmentDto,
     @Req() req: AuthRequest
   ) {
+    const shipper = req.user;
+
     const key = `order_response_${orderId}_${req.user.userId}`;
     await this.redisService.set(key, body.response, 30);
     if (body.response === 'accepted') {
       await this.redisService.set(`order_assigned_${orderId}`, req.user.userId);
+
+      await this.assignmentService.confirmAssignment(orderId, shipper.userId);
     }
     return { message: 'Response received' };
   }

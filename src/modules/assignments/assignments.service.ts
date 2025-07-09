@@ -54,4 +54,9 @@ export class AssignmentsService {
 
     return null;
   }
+
+  async confirmAssignment(orderId: string, shipperId: string) {
+    // Cập nhật đơn hàng với shipper đã nhận
+    return this.ordersService.assignShipper(orderId, shipperId);
+  }
 }

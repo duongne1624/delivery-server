@@ -5,12 +5,15 @@ import { Repository } from 'typeorm';
 import { User } from '@entities/user.entity';
 import { SafeUser } from './interfaces/safe-user.interface';
 import { Role } from '@common/constants/role.enum';
+import { Order } from '@entities/order.entity';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
-    private readonly userRepository: Repository<User>
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(Order)
+    private readonly orderRepository: Repository<Order>
   ) {}
 
   async findByPhone(identifier: string): Promise<User | undefined> {
@@ -56,18 +59,18 @@ export class UsersService {
       where: { role: Role.Shipper },
     });
 
-    const busyShipperIds = await this.userRepository
+    const busyShipperIdsRaw = await this.orderRepository
       .createQueryBuilder('order')
-      .select('order.shipperId')
+      .select('order.shipper_id', 'shipperId')
       .where('order.status IN (:...statuses)', {
         statuses: ['confirmed', 'delivering'],
       })
-      .andWhere('order.shipperId IS NOT NULL')
-      .groupBy('order.shipperId')
+      .andWhere('order.shipper_id IS NOT NULL')
+      .groupBy('order.shipper_id')
       .getRawMany();
 
-    const busyIds = busyShipperIds.map((row) => row.order_shipperId);
+    const busyShipperIds = busyShipperIdsRaw.map((row) => row.shipperId);
 
-    return shippers.filter((s) => !busyIds.includes(s.id));
+    return shippers.filter((shipper) => !busyShipperIds.includes(shipper.id));
   }
 }

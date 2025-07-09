@@ -23,7 +23,7 @@ export class Order {
   shipper_id: string;
 
   @ManyToOne(() => User, { nullable: true })
-  @JoinColumn({ name: 'category_id' })
+  @JoinColumn({ name: 'shipper_id' })
   shipper: User;
 
   @Column({
