@@ -1,9 +1,5 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
-import { RedisModule } from '@nestjs-modules/ioredis';
 import { JwtModule } from '@nestjs/jwt';
-
-// Config
-import { RedisConfig } from '@config/redis.config';
 
 // Shared
 import { DatabaseModule } from '@shared/database/database.module';
@@ -17,12 +13,14 @@ import { TransformInterceptor } from '@common/interceptors/transform.interceptor
 import { FaviconMiddleware } from './common/middleware/favicon.middleware';
 
 // Modules
+import { RedisModule } from '@shared/redis/redis.module';
 import { AuthModule } from '@modules/auth/auth.module';
 import { UsersModule } from '@modules/users/users.module';
 import { RestaurantsModule } from '@modules/restaurants/restaurants.module';
-// import { CategoriesModule } from '@modules/categories/categories.module';
-// import { ProductsModule } from '@modules/products/products.module';
-// import { OrdersModule } from '@modules/orders/orders.module';
+import { CategoriesModule } from '@modules/categories/categories.module';
+import { ProductsModule } from '@modules/products/products.module';
+import { OrdersModule } from '@modules/orders/orders.module';
+import { AssignmentsModule } from '@modules/assignments/assignments.module';
 // import { NotificationsModule } from '@modules/notifications/notifications.module';
 // import { FeedbackModule } from '@modules/feedback/feedback.module';
 // import { LogsModule } from '@modules/logs/logs.module';
@@ -31,7 +29,7 @@ import { RestaurantsModule } from '@modules/restaurants/restaurants.module';
   imports: [
     DatabaseModule,
     MongoModule,
-    RedisModule.forRoot(RedisConfig.getConfig()),
+    RedisModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'siuuu',
       signOptions: { expiresIn: process.env.JWT_EXPIRES_IN || '7d' },
@@ -40,9 +38,10 @@ import { RestaurantsModule } from '@modules/restaurants/restaurants.module';
     AuthModule,
     UsersModule,
     RestaurantsModule,
-    // CategoriesModule,
-    // ProductsModule,
-    // OrdersModule,
+    CategoriesModule,
+    ProductsModule,
+    OrdersModule,
+    AssignmentsModule,
     // NotificationsModule,
     // FeedbackModule,
     // LogsModule,

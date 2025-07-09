@@ -1,4 +1,10 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  UnauthorizedException,
+  BadRequestException,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -19,7 +25,7 @@ export class AuthController {
       loginDto.password
     );
     if (!user) {
-      throw new Error('Invalid credentials');
+      throw new UnauthorizedException('Số điện thoại hoặc mật khẩu không đúng');
     }
     return this.authService.login(user);
   }
@@ -31,7 +37,7 @@ export class AuthController {
   async register(@Body() registerDto: RegisterDto) {
     const user = await this.authService.phoneCheck(registerDto.phone);
     if (user) {
-      throw new Error('Số điện thoại đã tồn tại.');
+      throw new BadRequestException('Số điện thoại đã tồn tại');
     }
 
     return this.authService.register(registerDto);

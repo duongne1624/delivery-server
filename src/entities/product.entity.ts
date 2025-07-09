@@ -5,6 +5,7 @@ import {
   ManyToOne,
   CreateDateColumn,
   UpdateDateColumn,
+  JoinColumn,
 } from 'typeorm';
 import { Restaurant } from '@entities/restaurant.entity';
 import { Category } from '@entities/category.entity';
@@ -29,10 +30,32 @@ export class Product {
   @Column({ default: true })
   is_available: boolean;
 
-  @ManyToOne(() => Restaurant, (restaurant) => restaurant.products)
+  @Column({ type: 'integer', default: 0 })
+  discount_percent: number;
+
+  @Column({ type: 'integer', default: 0 })
+  sold_count: number;
+
+  @Column({ type: 'float', default: 0 })
+  rating: number;
+
+  @Column({ type: 'integer', default: 0 })
+  total_reviews: number;
+
+  @Column()
+  restaurant_id: string;
+
+  @ManyToOne(() => Restaurant, (restaurant) => restaurant.products, {
+    eager: false,
+  })
+  @JoinColumn({ name: 'restaurant_id' })
   restaurant: Restaurant;
 
-  @ManyToOne(() => Category, (category) => category.products)
+  @Column()
+  category_id: string;
+
+  @ManyToOne(() => Category, (category) => category.products, { eager: false })
+  @JoinColumn({ name: 'category_id' })
   category: Category;
 
   @CreateDateColumn()

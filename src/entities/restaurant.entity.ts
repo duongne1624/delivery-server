@@ -53,6 +53,6 @@ export class Restaurant {
   @UpdateDateColumn()
   updated_at: Date;
 
-  @OneToMany(() => Product, (product) => product.restaurant)
+  @OneToMany(() => Product, (product) => product.restaurant, { eager: false })
   products: Product[];
 }

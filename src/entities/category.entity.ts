@@ -19,7 +19,7 @@ export class Category {
   @Column({ nullable: true })
   description: string;
 
-  @OneToMany(() => Product, (product) => product.category)
+  @OneToMany(() => Product, (product) => product.category, { eager: false })
   products: Product[];
 
   @CreateDateColumn()

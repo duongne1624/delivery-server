@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '@entities/user.entity';
 import { SafeUser } from './interfaces/safe-user.interface';
+import { Role } from '@common/constants/role.enum';
 
 @Injectable()
 export class UsersService {
@@ -48,5 +49,25 @@ export class UsersService {
 
   async delete(id: string): Promise<void> {
     await this.userRepository.delete(id);
+  }
+
+  async getAvailableShippers(): Promise<User[]> {
+    const shippers = await this.userRepository.find({
+      where: { role: Role.Shipper },
+    });
+
+    const busyShipperIds = await this.userRepository
+      .createQueryBuilder('order')
+      .select('order.shipperId')
+      .where('order.status IN (:...statuses)', {
+        statuses: ['confirmed', 'delivering'],
+      })
+      .andWhere('order.shipperId IS NOT NULL')
+      .groupBy('order.shipperId')
+      .getRawMany();
+
+    const busyIds = busyShipperIds.map((row) => row.order_shipperId);
+
+    return shippers.filter((s) => !busyIds.includes(s.id));
   }
 }

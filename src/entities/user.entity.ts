@@ -26,6 +26,9 @@ export class User {
   @Column({ default: 'user' })
   role: 'user' | 'admin' | 'shipper';
 
+  @Column({ default: false })
+  is_active: boolean;
+
   @CreateDateColumn()
   created_at: Date;
 

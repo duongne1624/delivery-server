@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
   ManyToOne,
   OneToMany,
+  JoinColumn,
 } from 'typeorm';
 import { User } from '@entities/user.entity';
 import { OrderItem } from '@entities/order-item.entity';
@@ -17,6 +18,13 @@ export class Order {
 
   @ManyToOne(() => User)
   customer: User;
+
+  @Column({ nullable: true })
+  shipper_id: string;
+
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'category_id' })
+  shipper: User;
 
   @Column({
     type: 'enum',
@@ -34,7 +42,9 @@ export class Order {
   @Column({ nullable: true })
   note: string;
 
-  @OneToMany(() => OrderItem, (item) => item.order, { cascade: true })
+  @OneToMany(() => OrderItem, (item) => item.order, {
+    cascade: ['insert', 'update', 'remove'],
+  })
   items: OrderItem[];
 
   @CreateDateColumn()

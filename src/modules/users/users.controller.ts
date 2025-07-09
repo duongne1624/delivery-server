@@ -8,6 +8,7 @@ import {
   UseGuards,
   Req,
   ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -24,6 +25,7 @@ import { RolesGuard } from '@common/guards/roles.guard';
 import { Roles } from '@common/decorators/roles.decorator';
 import { Role } from '@common/constants/role.enum';
 import { AuthRequest } from '@common/interfaces/auth-request.interface';
+import { UpdateActiveDto } from './dto/update-active.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -36,7 +38,11 @@ export class UsersController {
   @Roles(Role.Admin)
   @ApiOperation({ summary: 'Get all users' })
   @ApiResponse({ status: 200, description: 'List of all users' })
-  async findAll() {
+  async findAll(@Req() req: AuthRequest) {
+    const user = req.user;
+    if (user.role !== Role.Admin) {
+      throw new ForbiddenException('Bạn không có quyền truy cập');
+    }
     return this.usersService.findAll();
   }
 
@@ -49,6 +55,25 @@ export class UsersController {
       throw new ForbiddenException('Bạn không có quyền truy cập');
     }
     return this.usersService.findById(id);
+  }
+
+  @Patch('update-by-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.Shipper)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Activate or deactivate shipper' })
+  async updateByToken(@Body() dto: UpdateActiveDto, @Req() req: AuthRequest) {
+    const user = req.user;
+
+    if (!user) throw new NotFoundException('User not found');
+
+    if (user.role !== Role.Shipper)
+      throw new ForbiddenException('Only shipper can be activated');
+
+    if (req.user.userId !== user.userId)
+      throw new ForbiddenException('Update not completed');
+
+    return this.usersService.update(user.userId, dto);
   }
 
   @Patch(':id')
