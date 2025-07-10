@@ -20,6 +20,9 @@ export class Restaurant {
   name: string;
 
   @Column()
+  name_normalized: string;
+
+  @Column()
   address: string;
 
   @Column()

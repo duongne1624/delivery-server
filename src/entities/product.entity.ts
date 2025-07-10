@@ -20,6 +20,9 @@ export class Product {
   @Column()
   name: string;
 
+  @Column()
+  name_normalized: string;
+
   @Column('decimal', { precision: 10, scale: 2 })
   price: number;
 

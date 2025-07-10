@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Restaurant } from '@entities/restaurant.entity';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
 import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
+import { removeVietnameseTones } from '@common/utils/normalize.util';
 
 @Injectable()
 export class RestaurantsService {
@@ -26,13 +27,20 @@ export class RestaurantsService {
     const newRestaurant = this.restaurantRepo.create({
       ...dto,
       created_by_id: userId,
+      name_normalized: removeVietnameseTones(dto.name),
     });
     return this.restaurantRepo.save(newRestaurant);
   }
 
   async update(id: string, dto: UpdateRestaurantDto): Promise<Restaurant> {
-    await this.restaurantRepo.update(id, dto);
-    return this.findById(id);
+    const existing = await this.findById(id);
+    const updated = this.restaurantRepo.merge(existing, {
+      ...dto,
+      name_normalized: dto.name
+        ? removeVietnameseTones(dto.name)
+        : existing.name_normalized,
+    });
+    return this.restaurantRepo.save(updated);
   }
 
   async deactivate(id: string): Promise<Restaurant> {
@@ -85,5 +93,30 @@ export class RestaurantsService {
       .orderBy('total_orders', 'DESC')
       .limit(limit)
       .getRawMany();
+  }
+
+  async searchRestaurants(keyword: string) {
+    if (!keyword) return [];
+
+    const normalized = removeVietnameseTones(keyword.trim().toLowerCase());
+
+    const query = this.restaurantRepo
+      .createQueryBuilder('r')
+      .leftJoin('r.products', 'p')
+      .distinct(true)
+      .where('r.name_normalized ILIKE :kw', { kw: `%${normalized}%` })
+      .orWhere('p.name_normalized ILIKE :kw', { kw: `%${normalized}%` })
+      .orderBy('r.name', 'ASC')
+      .limit(20);
+
+    return await query.getMany();
+  }
+
+  async normalizeExistingRestaurantNames(): Promise<void> {
+    const all = await this.restaurantRepo.find();
+    for (const r of all) {
+      r.name_normalized = removeVietnameseTones(r.name);
+      await this.restaurantRepo.save(r);
+    }
   }
 }

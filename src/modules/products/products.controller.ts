@@ -63,7 +63,6 @@ export class ProductsController {
   @ApiResponse({ status: 201, description: 'Product created successfully' })
   async create(@Body() dto: CreateProductDto, @Req() req: AuthRequest) {
     const restaurant = await this.restaurantsService.findById(
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       dto.restaurant_id
     );
 

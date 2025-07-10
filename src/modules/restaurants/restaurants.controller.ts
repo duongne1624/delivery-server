@@ -58,6 +58,12 @@ export class RestaurantsController {
     return this.restaurantsService.getTopSellingRestaurants();
   }
 
+  @Get('search')
+  @ApiQuery({ name: 'keyword', required: true })
+  async search(@Query('keyword') keyword: string) {
+    return this.restaurantsService.searchRestaurants(keyword);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get restaurant by ID' })
   @ApiResponse({ status: 200, description: 'Restaurant detail by ID' })

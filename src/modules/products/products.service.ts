@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Product } from '@entities/product.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { removeVietnameseTones } from '@common/utils/normalize.util';
 
 @Injectable()
 export class ProductsService {
@@ -49,6 +50,7 @@ export class ProductsService {
       .addSelect('p.name', 'name')
       .addSelect('p.price', 'price')
       .addSelect('p.image', 'image')
+      .addSelect('p.restaurant_id', 'restaurant_id')
       .addSelect('SUM(oi.quantity)', 'total_sold')
       .groupBy('p.id')
       .orderBy('total_sold', 'DESC')
@@ -60,7 +62,16 @@ export class ProductsService {
       name: item.name,
       price: Number(item.price),
       image: item.image,
+      restaurant_id: item.restaurant_id,
       total_sold: Number(item.total_sold),
     }));
+  }
+
+  async normalizeExistingRestaurantNames(): Promise<void> {
+    const all = await this.productRepo.find();
+    for (const r of all) {
+      r.name_normalized = removeVietnameseTones(r.name);
+      await this.productRepo.save(r);
+    }
   }
 }
