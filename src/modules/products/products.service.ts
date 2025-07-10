@@ -13,7 +13,6 @@ export class ProductsService {
   ) {}
 
   async create(dto: CreateProductDto): Promise<Product> {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     const product = this.productRepo.create(dto);
     return this.productRepo.save(product);
   }
@@ -41,7 +40,7 @@ export class ProductsService {
   }
 
   async getTopSellingProducts(limit = 10) {
-    return this.productRepo
+    const rawProducts = await this.productRepo
       .createQueryBuilder('p')
       .innerJoin('p.orderItems', 'oi')
       .innerJoin('oi.order', 'o')
@@ -55,5 +54,13 @@ export class ProductsService {
       .orderBy('total_sold', 'DESC')
       .limit(limit)
       .getRawMany();
+
+    return rawProducts.map((item) => ({
+      id: item.id,
+      name: item.name,
+      price: Number(item.price),
+      image: item.image,
+      total_sold: Number(item.total_sold),
+    }));
   }
 }

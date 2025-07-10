@@ -27,6 +27,13 @@ export class CreateRestaurantDto {
   @IsString()
   image?: string;
 
+  @ApiPropertyOptional({
+    description: 'public Id của Image',
+    example: '123123123',
+  })
+  @IsString()
+  image_public_id?: string;
+
   @ApiPropertyOptional({ description: 'Giờ mở cửa (HH:mm)', example: '08:00' })
   @IsString()
   open_time?: string;

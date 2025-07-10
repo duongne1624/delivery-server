@@ -1,4 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional, IsString } from 'class-validator';
 
 export class MeResponseDto {
   @ApiProperty()
@@ -11,7 +12,12 @@ export class MeResponseDto {
   phone: string;
 
   @ApiProperty()
-  email: string;
+  email?: string;
+
+  @ApiPropertyOptional({ example: 'http://example.com/image.png' })
+  @IsOptional()
+  @IsString()
+  image?: string;
 
   @ApiProperty()
   role: string;

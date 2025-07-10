@@ -62,6 +62,7 @@ export class UsersController {
       name: user.name,
       phone: user.phone,
       email: user.email,
+      image: user.image,
       role: user.role,
       is_active: user.is_active,
       created_at: user.created_at,

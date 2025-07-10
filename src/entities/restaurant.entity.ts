@@ -28,6 +28,9 @@ export class Restaurant {
   @Column({ nullable: true })
   image: string;
 
+  @Column({ nullable: true })
+  image_public_id: string;
+
   @Column({ default: true })
   is_active: boolean;
 

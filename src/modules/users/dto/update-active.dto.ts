@@ -12,6 +12,16 @@ export class UpdateActiveDto {
   @IsEmail()
   email?: string;
 
+  @ApiPropertyOptional({ example: 'http://example.com/image.png' })
+  @IsOptional()
+  @IsString()
+  image?: string;
+
+  @ApiPropertyOptional({ example: 'fdlgkdfj213' })
+  @IsOptional()
+  @IsString()
+  image_public_id?: string;
+
   @ApiProperty({ example: true })
   @IsBoolean()
   is_active?: boolean;

@@ -18,6 +18,16 @@ export class UpdateUserDto {
   @IsString()
   phone?: string;
 
+  @ApiPropertyOptional({ example: 'http://example.com/image.png' })
+  @IsOptional()
+  @IsString()
+  image?: string;
+
+  @ApiPropertyOptional({ example: 'fdlgkdfj213' })
+  @IsOptional()
+  @IsString()
+  image_public_id?: string;
+
   @ApiPropertyOptional({ enum: ['user', 'admin', 'shipper'], default: 'user' })
   @IsOptional()
   @IsString()

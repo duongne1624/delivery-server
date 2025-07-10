@@ -20,6 +20,12 @@ export class User {
   @Column({ unique: true })
   phone: string;
 
+  @Column({ nullable: true })
+  image?: string;
+
+  @Column({ nullable: true })
+  image_public_id?: string;
+
   @Column()
   password: string;
 

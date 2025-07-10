@@ -27,6 +27,11 @@ export class CreateProductDto {
   @IsString()
   image?: string;
 
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  image_public_id?: string;
+
   @ApiProperty()
   @IsUUID()
   restaurant_id: string;
