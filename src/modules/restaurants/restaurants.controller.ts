@@ -10,6 +10,8 @@ import {
   Req,
   ForbiddenException,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -17,6 +19,8 @@ import {
   ApiBearerAuth,
   ApiResponse,
   ApiQuery,
+  ApiConsumes,
+  ApiBody,
 } from '@nestjs/swagger';
 import { RestaurantsService } from './restaurants.service';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
@@ -26,6 +30,7 @@ import { RolesGuard } from '@common/guards/roles.guard';
 import { Roles } from '@common/decorators/roles.decorator';
 import { Role } from '@common/constants/role.enum';
 import { AuthRequest } from '@common/interfaces/auth-request.interface';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('restaurants')
 @ApiTags('Restaurants')
@@ -74,26 +79,43 @@ export class RestaurantsController {
   @Post()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'Create a new restaurant',
+    type: CreateRestaurantDto,
+  })
   @ApiOperation({ summary: 'Create a new restaurant' })
   @ApiResponse({ status: 201, description: 'Created restaurant successfully' })
-  async create(@Body() dto: CreateRestaurantDto, @Req() req: AuthRequest) {
-    return this.restaurantsService.create(dto, req.user.userId);
+  async create(
+    @Body() dto: CreateRestaurantDto,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: AuthRequest
+  ) {
+    return this.restaurantsService.create(dto, req.user.userId, file);
   }
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.Admin, Role.User)
   @ApiBearerAuth()
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'Update a restaurant by ID',
+    type: UpdateRestaurantDto,
+  })
   @ApiOperation({ summary: 'Update a restaurant by ID' })
   @ApiResponse({ status: 200, description: 'Updated restaurant successfully' })
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateRestaurantDto,
+    @UploadedFile() file: Express.Multer.File,
     @Req() req: AuthRequest
   ) {
     const restaurant = await this.restaurantsService.findById(id);
     this.ensureCanModify(restaurant, req.user);
-    return this.restaurantsService.update(id, dto);
+    return this.restaurantsService.update(id, dto, file);
   }
 
   @Delete(':id')

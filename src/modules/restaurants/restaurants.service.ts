@@ -1,16 +1,23 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Restaurant } from '@entities/restaurant.entity';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
 import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
 import { removeVietnameseTones } from '@common/utils/normalize.util';
+import { isImageUrl } from '@common/utils/valid-image.util';
+import { FileUploadService } from '@shared/file-upload/file-upload.service';
 
 @Injectable()
 export class RestaurantsService {
   constructor(
     @InjectRepository(Restaurant)
-    private readonly restaurantRepo: Repository<Restaurant>
+    private readonly restaurantRepo: Repository<Restaurant>,
+    private readonly fileUploadService: FileUploadService
   ) {}
 
   async findAll(): Promise<Restaurant[]> {
@@ -23,24 +30,120 @@ export class RestaurantsService {
     return restaurant;
   }
 
-  async create(dto: CreateRestaurantDto, userId: string): Promise<Restaurant> {
+  async create(
+    dto: CreateRestaurantDto,
+    userId: string,
+    file?: Express.Multer.File
+  ): Promise<Restaurant> {
+    let image: string | undefined;
+    let image_public_id: string | undefined = undefined;
+    if (!dto.image && !file) {
+      throw new BadRequestException(
+        'Phải cung cấp một hình ảnh (image hoặc file).'
+      );
+    }
+
+    if (dto.image && file) {
+      throw new BadRequestException(
+        'Chỉ được gửi 1 loại hình ảnh: image (link) hoặc file.'
+      );
+    }
+
+    if (file) {
+      const uploaded =
+        await this.fileUploadService.uploadImageToCloudinary(file);
+      image = uploaded.secure_url;
+      image_public_id = uploaded.public_id;
+    }
+
+    if (dto.image && !file) {
+      const isValid = await isImageUrl(dto.image);
+      if (!isValid)
+        throw new BadRequestException('Đường dẫn hình ảnh không hợp lệ.');
+      image = dto.image;
+      image_public_id = undefined;
+    }
+
     const newRestaurant = this.restaurantRepo.create({
       ...dto,
+      image,
+      image_public_id,
       created_by_id: userId,
       name_normalized: removeVietnameseTones(dto.name),
     });
+
     return this.restaurantRepo.save(newRestaurant);
   }
 
-  async update(id: string, dto: UpdateRestaurantDto): Promise<Restaurant> {
+  async update(
+    id: string,
+    dto: UpdateRestaurantDto,
+    file?: Express.Multer.File
+  ): Promise<Restaurant> {
     const existing = await this.findById(id);
-    const updated = this.restaurantRepo.merge(existing, {
-      ...dto,
-      name_normalized: dto.name
-        ? removeVietnameseTones(dto.name)
-        : existing.name_normalized,
-    });
-    return this.restaurantRepo.save(updated);
+
+    let image = existing.image;
+    let image_public_id = existing.image_public_id;
+
+    // Nếu truyền cả file và link ảnh → lỗi
+    if (file && dto.image) {
+      throw new BadRequestException(
+        'Chỉ được chọn 1 trong 2: file hoặc URL ảnh'
+      );
+    }
+
+    // Nếu có file ảnh → upload lên Cloudinary
+    if (file) {
+      const uploaded =
+        await this.fileUploadService.uploadImageToCloudinary(file);
+
+      // Chỉ xóa ảnh cũ nếu có và không phải từ URL
+      if (existing.image_public_id && existing.image_public_id !== '-1') {
+        await this.fileUploadService.deleteImageFromCloudinary(
+          existing.image_public_id
+        );
+      }
+
+      image = uploaded.secure_url;
+      image_public_id = uploaded.public_id;
+    }
+
+    // Nếu dùng link ảnh
+    if (dto.image && !file) {
+      const isValid = await isImageUrl(dto.image);
+      if (!isValid) {
+        throw new BadRequestException('Image URL không hợp lệ');
+      }
+
+      // Nếu ảnh cũ là file → xóa file cũ
+      if (existing.image_public_id && existing.image_public_id !== '-1') {
+        await this.fileUploadService.deleteImageFromCloudinary(
+          existing.image_public_id
+        );
+      }
+
+      image = dto.image;
+      image_public_id = '-1';
+    }
+
+    // Cập nhật các trường nếu có
+    if (dto.name) {
+      existing.name = dto.name;
+      existing.name_normalized = removeVietnameseTones(dto.name);
+    }
+
+    if (dto.address) existing.address = dto.address;
+    if (dto.phone) existing.phone = dto.phone;
+    if (dto.open_time) existing.open_time = dto.open_time;
+    if (dto.close_time) existing.close_time = dto.close_time;
+    if (dto.is_active !== undefined) existing.is_active = dto.is_active;
+    if (dto.is_open_now !== undefined) existing.is_open_now = dto.is_open_now;
+
+    // Cập nhật ảnh
+    existing.image = image;
+    existing.image_public_id = image_public_id;
+
+    return this.restaurantRepo.save(existing);
   }
 
   async deactivate(id: string): Promise<Restaurant> {
