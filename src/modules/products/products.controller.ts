@@ -10,6 +10,8 @@ import {
   ForbiddenException,
   Req,
   Query,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -17,6 +19,8 @@ import {
   ApiBearerAuth,
   ApiResponse,
   ApiQuery,
+  ApiConsumes,
+  ApiBody,
 } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
 import { RestaurantsService } from '@modules/restaurants/restaurants.service';
@@ -27,6 +31,7 @@ import { Role } from '@common/constants/role.enum';
 import { Roles } from '@common/decorators/roles.decorator';
 import { RolesGuard } from '@common/guards/roles.guard';
 import { AuthRequest } from '@common/interfaces/auth-request.interface';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('Products')
 @Controller('products')
@@ -59,9 +64,19 @@ export class ProductsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.Admin, Role.User)
   @ApiBearerAuth()
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'Create a product by ID',
+    type: CreateProductDto,
+  })
   @ApiOperation({ summary: 'Create new product' })
   @ApiResponse({ status: 201, description: 'Product created successfully' })
-  async create(@Body() dto: CreateProductDto, @Req() req: AuthRequest) {
+  async create(
+    @Body() dto: CreateProductDto,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: AuthRequest
+  ) {
     const restaurant = await this.restaurantsService.findById(
       dto.restaurant_id
     );
@@ -75,18 +90,25 @@ export class ProductsController {
       );
     }
 
-    return this.productsService.create(dto);
+    return this.productsService.create(dto, file);
   }
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.Admin, Role.User)
   @ApiBearerAuth()
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'Update a product by ID',
+    type: UpdateProductDto,
+  })
   @ApiOperation({ summary: 'Update product by ID' })
   @ApiResponse({ status: 200, description: 'Updated product' })
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateProductDto,
+    @UploadedFile() file: Express.Multer.File,
     @Req() req: AuthRequest
   ) {
     const product = await this.productsService.findById(id);
@@ -100,7 +122,7 @@ export class ProductsController {
       );
     }
 
-    return this.productsService.update(id, dto);
+    return this.productsService.update(id, dto, file);
   }
 
   @Delete(':id')

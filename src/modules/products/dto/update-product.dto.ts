@@ -17,6 +17,15 @@ export class UpdateProductDto {
   @IsString()
   description?: string;
 
+  @ApiProperty({
+    type: 'string',
+    format: 'binary',
+    required: false,
+    description: 'Ảnh đại diện nhà hàng',
+  })
+  @IsOptional()
+  file?: any;
+
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()

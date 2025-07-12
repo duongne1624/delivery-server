@@ -6,6 +6,7 @@ import { Product } from '@entities/product.entity';
 import { Restaurant } from '@entities/restaurant.entity';
 import { Category } from '@entities/category.entity';
 import { RestaurantsModule } from '@modules/restaurants/restaurants.module';
+import { FileUploadService } from '@shared/file-upload/file-upload.service';
 
 @Module({
   imports: [
@@ -13,7 +14,7 @@ import { RestaurantsModule } from '@modules/restaurants/restaurants.module';
     RestaurantsModule,
   ],
   controllers: [ProductsController],
-  providers: [ProductsService],
+  providers: [ProductsService, FileUploadService],
   exports: [ProductsService],
 })
 export class ProductsModule {}
