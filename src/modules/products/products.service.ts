@@ -53,6 +53,7 @@ export class ProductsService {
       ...dto,
       image,
       image_public_id,
+      name_normalized: removeVietnameseTones(dto.name),
     });
 
     return this.productRepo.save(newProduct);
@@ -116,7 +117,10 @@ export class ProductsService {
     }
 
     // Cập nhật từng trường nếu có
-    if (dto.name !== undefined) existing.name = dto.name;
+    if (dto.name !== undefined) {
+      existing.name = dto.name;
+      existing.name_normalized = removeVietnameseTones(dto.name);
+    }
     if (dto.price !== undefined) existing.price = dto.price;
     if (dto.description !== undefined) existing.description = dto.description;
     if (dto.category_id !== undefined) existing.category_id = dto.category_id;
