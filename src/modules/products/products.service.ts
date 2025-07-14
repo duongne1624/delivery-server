@@ -79,8 +79,9 @@ export class ProductsService {
   ): Promise<Product> {
     const existing = await this.findById(id);
 
-    let image = existing.image;
-    let image_public_id = existing.image_public_id;
+    let newImage = existing.image;
+    let newImagePublicId = existing.image_public_id;
+    let shouldDeleteOldImage = false;
 
     if (file && dto.image) {
       throw new BadRequestException(
@@ -88,35 +89,29 @@ export class ProductsService {
       );
     }
 
+    // Trường hợp upload file mới
     if (file) {
       const uploaded =
         await this.fileUploadService.uploadImageToCloudinary(file);
-      if (existing.image_public_id && existing.image_public_id !== '-1') {
-        await this.fileUploadService.deleteImageFromCloudinary(
-          existing.image_public_id
-        );
-      }
-      image = uploaded.secure_url;
-      image_public_id = uploaded.public_id;
+      newImage = uploaded.secure_url;
+      newImagePublicId = uploaded.public_id;
+      shouldDeleteOldImage =
+        !!existing.image_public_id && existing.image_public_id !== '-1';
     }
 
+    // Trường hợp dùng link ảnh
     if (dto.image && !file) {
       const isValid = await isImageUrl(dto.image);
       if (!isValid) {
         throw new BadRequestException('Image URL không hợp lệ');
       }
-
-      if (existing.image_public_id && existing.image_public_id !== '-1') {
-        await this.fileUploadService.deleteImageFromCloudinary(
-          existing.image_public_id
-        );
-      }
-
-      image = dto.image;
-      image_public_id = '-1';
+      newImage = dto.image;
+      newImagePublicId = '-1';
+      shouldDeleteOldImage =
+        !!existing.image_public_id && existing.image_public_id !== '-1';
     }
 
-    // Cập nhật từng trường nếu có
+    // Gán các trường cần cập nhật
     if (dto.name !== undefined) {
       existing.name = dto.name;
       existing.name_normalized = removeVietnameseTones(dto.name);
@@ -125,10 +120,32 @@ export class ProductsService {
     if (dto.description !== undefined) existing.description = dto.description;
     if (dto.category_id !== undefined) existing.category_id = dto.category_id;
 
-    existing.image = image;
-    existing.image_public_id = image_public_id;
+    existing.image = newImage;
+    existing.image_public_id = newImagePublicId;
 
-    return this.productRepo.save(existing);
+    try {
+      const saved = await this.productRepo.save(existing);
+
+      if (shouldDeleteOldImage) {
+        await this.fileUploadService.deleteImageFromCloudinary(
+          existing.image_public_id
+        );
+      }
+
+      return saved;
+    } catch (error) {
+      if (
+        file &&
+        newImagePublicId &&
+        newImagePublicId !== existing.image_public_id
+      ) {
+        await this.fileUploadService.deleteImageFromCloudinary(
+          newImagePublicId
+        );
+      }
+
+      throw error;
+    }
   }
 
   async delete(id: string): Promise<void> {
