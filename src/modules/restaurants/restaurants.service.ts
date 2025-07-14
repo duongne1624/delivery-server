@@ -84,66 +84,67 @@ export class RestaurantsService {
 
     let image = existing.image;
     let image_public_id = existing.image_public_id;
+    let shouldDeleteOldImage = false;
 
-    // Nếu truyền cả file và link ảnh → lỗi
     if (file && dto.image) {
       throw new BadRequestException(
         'Chỉ được chọn 1 trong 2: file hoặc URL ảnh'
       );
     }
 
-    // Nếu có file ảnh → upload lên Cloudinary
     if (file) {
       const uploaded =
         await this.fileUploadService.uploadImageToCloudinary(file);
-
-      // Chỉ xóa ảnh cũ nếu có và không phải từ URL
-      if (existing.image_public_id && existing.image_public_id !== '-1') {
-        await this.fileUploadService.deleteImageFromCloudinary(
-          existing.image_public_id
-        );
-      }
-
       image = uploaded.secure_url;
       image_public_id = uploaded.public_id;
+
+      if (!!existing.image_public_id && existing.image_public_id !== '-1') {
+        shouldDeleteOldImage = true;
+      }
     }
 
-    // Nếu dùng link ảnh
     if (dto.image && !file) {
       const isValid = await isImageUrl(dto.image);
       if (!isValid) {
         throw new BadRequestException('Image URL không hợp lệ');
       }
 
-      // Nếu ảnh cũ là file → xóa file cũ
-      if (existing.image_public_id && existing.image_public_id !== '-1') {
-        await this.fileUploadService.deleteImageFromCloudinary(
-          existing.image_public_id
-        );
-      }
-
       image = dto.image;
       image_public_id = '-1';
+
+      if (!!existing.image_public_id && existing.image_public_id !== '-1') {
+        shouldDeleteOldImage = true;
+      }
     }
 
-    // Cập nhật các trường nếu có
-    if (dto.name) {
+    if (dto.name !== undefined) {
       existing.name = dto.name;
       existing.name_normalized = removeVietnameseTones(dto.name);
     }
 
-    if (dto.address) existing.address = dto.address;
-    if (dto.phone) existing.phone = dto.phone;
-    if (dto.open_time) existing.open_time = dto.open_time;
-    if (dto.close_time) existing.close_time = dto.close_time;
+    if (dto.address !== undefined) existing.address = dto.address;
+    if (dto.phone !== undefined) existing.phone = dto.phone;
+    if (dto.open_time !== undefined) existing.open_time = dto.open_time;
+    if (dto.close_time !== undefined) existing.close_time = dto.close_time;
     if (dto.is_active !== undefined) existing.is_active = dto.is_active;
     if (dto.is_open_now !== undefined) existing.is_open_now = dto.is_open_now;
 
-    // Cập nhật ảnh
     existing.image = image;
     existing.image_public_id = image_public_id;
 
-    return this.restaurantRepo.save(existing);
+    const saved = await this.restaurantRepo.save(existing);
+
+    if (shouldDeleteOldImage && existing.image_public_id) {
+      try {
+        await this.fileUploadService.deleteImageFromCloudinary(
+          existing.image_public_id
+        );
+      } catch (err) {
+        console.error('Không thể xóa ảnh cũ:', err.message);
+      }
+    }
+
+    return saved;
   }
 
   async deactivate(id: string): Promise<Restaurant> {
