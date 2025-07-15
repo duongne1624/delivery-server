@@ -21,6 +21,7 @@ import {
   ApiQuery,
   ApiConsumes,
   ApiBody,
+  ApiParam,
 } from '@nestjs/swagger';
 import { RestaurantsService } from './restaurants.service';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
@@ -51,22 +52,62 @@ export class RestaurantsController {
   async paginate(@Query('page') page = 1, @Query('limit') limit = 10) {
     const [data, total] = await this.restaurantsService.paginate(+page, +limit);
     return {
-      data,
-      total,
-      page: +page,
-      limit: +limit,
+      data: {
+        data,
+        total,
+        page: +page,
+        limit: +limit,
+      },
     };
   }
 
   @Get('top-selling')
-  async getTopSellingRestaurants() {
-    return this.restaurantsService.getTopSellingRestaurants();
+  @ApiOperation({ summary: 'Phân trang danh sách top các nhà hàng' })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
+  async getTopSellingRestaurants(
+    @Query('page') page = 1,
+    @Query('limit') limit = 10
+  ) {
+    const result = await this.restaurantsService.getTopSellingRestaurants(
+      +page,
+      +limit
+    );
+
+    return {
+      success: true,
+      data: result,
+      message: 'Success',
+    };
   }
 
   @Get('search')
   @ApiQuery({ name: 'keyword', required: true })
   async search(@Query('keyword') keyword: string) {
     return this.restaurantsService.searchRestaurants(keyword);
+  }
+
+  @Get(':id/products')
+  @ApiOperation({ summary: 'Lấy danh sách món ăn của nhà hàng' })
+  @ApiParam({ name: 'id', description: 'ID của nhà hàng', example: 'uuid-123' })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
+  async getProductsByRestaurant(
+    @Param('id') restaurantId: string,
+    @Query('page') page = 1,
+    @Query('limit') limit = 10
+  ) {
+    const result = await this.restaurantsService.getProductsByRestaurant(
+      restaurantId,
+      +page,
+      +limit
+    );
+
+    return {
+      success: true,
+      data: result,
+      message: 'Success',
+    };
   }
 
   @Get(':id')

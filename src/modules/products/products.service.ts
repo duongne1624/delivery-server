@@ -163,6 +163,7 @@ export class ProductsService {
       .addSelect('p.price', 'price')
       .addSelect('p.image', 'image')
       .addSelect('p.restaurant_id', 'restaurant_id')
+      .addSelect('p.category_id', 'category_id')
       .addSelect('SUM(oi.quantity)', 'total_sold')
       .groupBy('p.id')
       .orderBy('total_sold', 'DESC')
@@ -175,7 +176,8 @@ export class ProductsService {
       price: Number(item.price),
       image: item.image,
       restaurant_id: item.restaurant_id,
-      total_sold: Number(item.total_sold),
+      category_id: item.category_id,
+      sold_count: Number(item.total_sold),
     }));
   }
 

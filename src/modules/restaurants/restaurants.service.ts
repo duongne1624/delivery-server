@@ -11,12 +11,15 @@ import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
 import { removeVietnameseTones } from '@common/utils/normalize.util';
 import { isImageUrl } from '@common/utils/valid-image.util';
 import { FileUploadService } from '@shared/file-upload/file-upload.service';
+import { Product } from '@entities/product.entity';
 
 @Injectable()
 export class RestaurantsService {
   constructor(
     @InjectRepository(Restaurant)
     private readonly restaurantRepo: Repository<Restaurant>,
+    @InjectRepository(Product)
+    private readonly productRepo: Repository<Product>,
     private readonly fileUploadService: FileUploadService
   ) {}
 
@@ -180,8 +183,11 @@ export class RestaurantsService {
     return [data, count];
   }
 
-  async getTopSellingRestaurants(limit = 10) {
-    return this.restaurantRepo
+  async getTopSellingRestaurants(page = 1, limit = 10) {
+    const offset = (page - 1) * limit;
+
+    // Lấy dữ liệu phân trang
+    const data = await this.restaurantRepo
       .createQueryBuilder('r')
       .innerJoin('r.products', 'p')
       .innerJoin('p.orderItems', 'oi')
@@ -194,9 +200,31 @@ export class RestaurantsService {
       .addSelect('COUNT(DISTINCT o.id)', 'total_orders')
       .groupBy('r.id')
       .addGroupBy('r.name')
+      .addGroupBy('r.image')
+      .addGroupBy('r.address')
       .orderBy('total_orders', 'DESC')
+      .offset(offset)
       .limit(limit)
       .getRawMany();
+
+    // Lấy tổng số lượng nhà hàng bán được hàng
+    const total = await this.restaurantRepo
+      .createQueryBuilder('r')
+      .innerJoin('r.products', 'p')
+      .innerJoin('p.orderItems', 'oi')
+      .innerJoin('oi.order', 'o')
+      .where('o.status = :status', { status: 'completed' })
+      .select('r.id')
+      .groupBy('r.id')
+      .getCount();
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async searchRestaurants(keyword: string) {
@@ -214,6 +242,23 @@ export class RestaurantsService {
       .limit(20);
 
     return await query.getMany();
+  }
+
+  async getProductsByRestaurant(restaurantId: string, page = 1, limit = 10) {
+    const [products, total] = await this.productRepo.findAndCount({
+      where: { restaurant_id: restaurantId },
+      order: { sold_count: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    return {
+      data: products,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async normalizeExistingRestaurantNames(): Promise<void> {
