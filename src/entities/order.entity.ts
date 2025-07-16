@@ -7,9 +7,11 @@ import {
   ManyToOne,
   OneToMany,
   JoinColumn,
+  OneToOne,
 } from 'typeorm';
 import { User } from '@entities/user.entity';
 import { OrderItem } from '@entities/order-item.entity';
+import { Payment } from '@entities/payment.entity';
 
 @Entity('orders')
 export class Order {
@@ -46,6 +48,11 @@ export class Order {
     cascade: ['insert', 'update', 'remove'],
   })
   items: OrderItem[];
+
+  @OneToOne(() => Payment, (payment) => payment.order, {
+    cascade: ['insert', 'update'],
+  })
+  payment: Payment;
 
   @CreateDateColumn()
   created_at: Date;

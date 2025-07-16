@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -6,11 +7,17 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Order } from '@entities/order.entity';
-import { CreateOrderDto } from './dto/create-order.dto';
 import { User } from '@entities/user.entity';
 import { OrderItem } from '@entities/order-item.entity';
 import { Product } from '@entities/product.entity';
 import { OrderResponseDto, UserSummaryDto } from './dto/order-response.dto';
+import {
+  CreateOrderWithPaymentDto,
+  PaymentMethod,
+} from './dto/create-order-with-payment.dto';
+import { Payment } from '@entities/payment.entity';
+import { PaymentsService } from '@modules/payments/payments.service';
+import { createVnpayPaymentUrl } from '@common/utils/vnpay.util';
 
 @Injectable()
 export class OrdersService {
@@ -22,29 +29,37 @@ export class OrdersService {
     @InjectRepository(OrderItem)
     private itemRepo: Repository<OrderItem>,
     @InjectRepository(Product)
-    private productRepo: Repository<Product>
+    private productRepo: Repository<Product>,
+    @InjectRepository(Payment)
+    private paymentRepo: Repository<Payment>,
+    private readonly paymentsService: PaymentsService
   ) {}
 
-  async create(dto: CreateOrderDto, userId: string): Promise<OrderResponseDto> {
-    const items: OrderItem[] = [];
-
-    const user = await this.userRepo.findOneBy({ id: userId });
+  async createWithPayment(
+    userId: string,
+    dto: CreateOrderWithPaymentDto,
+    clientIp: string
+  ): Promise<{ order: OrderResponseDto; paymentUrl?: string }> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
 
-    let total = 0;
-    for (const i of dto.items) {
-      const product = await this.productRepo.findOneBy({ id: i.product_id });
-      if (!product) throw new NotFoundException('Product not found');
+    // Tính tổng giá trị
+    let total_price = 0;
+    const items: OrderItem[] = [];
 
-      const price = Number(product.price) * i.quantity;
-      total += price;
+    for (const itemDto of dto.items) {
+      const product = await this.productRepo.findOne({
+        where: { id: itemDto.product_id },
+      });
+      if (!product) throw new NotFoundException('Product not found');
 
       const item = this.itemRepo.create({
         product,
-        quantity: i.quantity,
+        quantity: itemDto.quantity,
         price: product.price,
       });
 
+      total_price += product.price * itemDto.quantity;
       items.push(item);
     }
 
@@ -52,12 +67,47 @@ export class OrdersService {
       customer: user,
       delivery_address: dto.delivery_address,
       note: dto.note,
-      total_price: total,
+      status: 'pending',
+      total_price,
       items,
     });
 
-    const saved = await this.orderRepo.save(order);
-    return this.mapOrderToDto(saved);
+    const savedOrder = await this.orderRepo.save(order);
+
+    if (dto.payment_method === PaymentMethod.COD) {
+      await this.paymentRepo.save({
+        method: 'cod',
+        status: 'pending',
+        amount: total_price,
+        order: savedOrder,
+      });
+
+      return { order: savedOrder };
+    }
+
+    if (dto.payment_method === PaymentMethod.VNPAY) {
+      const transaction_id = `${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+      await this.paymentRepo.save({
+        method: 'vnpay',
+        status: 'pending',
+        transaction_id,
+        amount: total_price,
+        order: savedOrder,
+      });
+
+      const paymentUrl = createVnpayPaymentUrl(
+        {
+          amount: total_price,
+          orderDescription: `Thanh toan don hang ${savedOrder.id}`,
+          orderId: savedOrder.id,
+        },
+        clientIp
+      );
+
+      return { order: savedOrder, paymentUrl };
+    }
+
+    throw new BadRequestException('Phương thức thanh toán không được hỗ trợ');
   }
 
   async findAll(userId): Promise<OrderResponseDto[]> {
