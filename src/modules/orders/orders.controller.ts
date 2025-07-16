@@ -11,7 +11,6 @@ import {
   Delete,
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
-import { CreateOrderDto } from './dto/create-order.dto';
 import { JwtAuthGuard } from '@common/guards/jwt-auth.guard';
 import {
   ApiBearerAuth,
@@ -24,6 +23,7 @@ import { Roles } from '@common/decorators/roles.decorator';
 import { RolesGuard } from '@common/guards/roles.guard';
 import { AuthRequest } from '@common/interfaces/auth-request.interface';
 import { OrderResponseDto } from './dto/order-response.dto';
+import { CreateOrderWithPaymentDto } from './dto/create-order-with-payment.dto';
 
 @ApiTags('Orders')
 @ApiBearerAuth()
@@ -33,10 +33,28 @@ export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create an order' })
-  @ApiResponse({ status: 200, description: 'List of all categories' })
-  create(@Body() dto: CreateOrderDto, @Req() req: AuthRequest) {
-    return this.ordersService.create(dto, req.user.userId);
+  @ApiOperation({ summary: 'Tạo đơn hàng + thanh toán' })
+  @UseGuards(JwtAuthGuard)
+  async createWithPayment(
+    @Body() dto: CreateOrderWithPaymentDto,
+    @Req() req: AuthRequest
+  ) {
+    // const reqIp =
+    //   req.headers['x-forwarded-for'] ||
+    //   req.connection.remoteAddress ||
+    //   req.socket.remoteAddress;
+    const reqIp =
+      req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+    const ip = (typeof reqIp === 'string' ? reqIp : reqIp[0]).replace(
+      '::ffff:',
+      ''
+    );
+    const result = await this.ordersService.createWithPayment(
+      req.user.userId,
+      dto,
+      ip
+    );
+    return result;
   }
 
   @Get()
