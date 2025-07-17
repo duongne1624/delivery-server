@@ -3,11 +3,14 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { TransformDateInterceptor } from '@common/interceptors/transform-date.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     // logger: false, // Thông báo lỗi trên console
   });
+
+  app.useGlobalInterceptors(new TransformDateInterceptor());
 
   app.useGlobalPipes(
     new ValidationPipe({
