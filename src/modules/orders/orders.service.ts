@@ -190,7 +190,7 @@ export class OrdersService {
   async findById(id: string): Promise<OrderResponseDto> {
     const order = await this.orderRepo.findOne({
       where: { id },
-      relations: ['customer', 'shipper', 'items', 'items.product'],
+      relations: ['customer', 'shipper', 'items', 'items.product', 'payment'],
     });
 
     if (!order) {
@@ -219,7 +219,7 @@ export class OrdersService {
     const shipper = await this.userRepo.findOneBy({ id: shipperId });
     const order = await this.orderRepo.findOne({
       where: { id: orderId },
-      relations: ['customer', 'shipper', 'items', 'items.product'],
+      relations: ['customer', 'shipper', 'items', 'items.product', 'payment'],
     });
 
     if (!shipper || !order) throw new NotFoundException();
@@ -299,7 +299,7 @@ export class OrdersService {
   ): Promise<OrderResponseDto> {
     const order = await this.orderRepo.findOne({
       where: { id: orderId },
-      relations: ['customer', 'shipper', 'items', 'items.product'],
+      relations: ['customer', 'shipper', 'items', 'items.product', 'payment'],
     });
 
     if (!order) throw new NotFoundException('Không tìm thấy đơn hàng');
