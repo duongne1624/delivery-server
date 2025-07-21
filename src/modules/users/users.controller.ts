@@ -65,6 +65,7 @@ export class UsersController {
       image: user.image,
       role: user.role,
       is_active: user.is_active,
+      addresses: [],
       created_at: user.created_at,
       updated_at: user.updated_at,
     };

@@ -41,6 +41,15 @@ export class Order {
   @Column()
   delivery_address: string;
 
+  @Column('decimal', { precision: 10, scale: 8, nullable: true })
+  delivery_latitude: number;
+
+  @Column('decimal', { precision: 11, scale: 8, nullable: true })
+  delivery_longitude: number;
+
+  @Column({ nullable: true })
+  delivery_place_id: string;
+
   @Column({ nullable: true })
   note: string;
 

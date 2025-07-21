@@ -4,7 +4,9 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  OneToMany,
 } from 'typeorm';
+import { UserAddress } from '@entities/user-address.entity';
 
 @Entity('users')
 export class User {
@@ -34,6 +36,11 @@ export class User {
 
   @Column({ default: false })
   is_active: boolean;
+
+  @OneToMany(() => UserAddress, (address) => address.user, {
+    cascade: ['insert', 'update'],
+  })
+  addresses: UserAddress[];
 
   @CreateDateColumn()
   created_at: Date;

@@ -22,8 +22,20 @@ export class Restaurant {
   @Column()
   name_normalized: string;
 
+  @Column({ nullable: true })
+  place_name: string;
+
   @Column()
   address: string;
+
+  @Column('decimal', { precision: 10, scale: 8, nullable: true })
+  latitude: number;
+
+  @Column('decimal', { precision: 11, scale: 8, nullable: true })
+  longitude: number;
+
+  @Column({ nullable: true })
+  place_id: string;
 
   @Column()
   phone: string;

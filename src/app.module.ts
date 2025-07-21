@@ -22,6 +22,7 @@ import { ProductsModule } from '@modules/products/products.module';
 import { OrdersModule } from '@modules/orders/orders.module';
 import { AssignmentsModule } from '@modules/assignments/assignments.module';
 import { PaymentsModule } from '@modules/payments/payments.module';
+import { UserAddressModule } from '@modules/user-address/user-address.module';
 // import { NotificationsModule } from '@modules/notifications/notifications.module';
 // import { FeedbackModule } from '@modules/feedback/feedback.module';
 // import { LogsModule } from '@modules/logs/logs.module';
@@ -38,6 +39,7 @@ import { PaymentsModule } from '@modules/payments/payments.module';
     FileUploadModule,
     AuthModule,
     UsersModule,
+    UserAddressModule,
     RestaurantsModule,
     CategoriesModule,
     ProductsModule,
