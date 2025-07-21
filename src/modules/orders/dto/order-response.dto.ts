@@ -26,6 +26,20 @@ export class ProductSummaryDto {
   image: string;
 }
 
+export class PaymentSummaryDto {
+  @ApiProperty()
+  method: 'momo' | 'vnpay' | 'cod' | 'zalopay';
+
+  @ApiProperty()
+  transaction_id?: string;
+
+  @ApiProperty()
+  status: 'pending' | 'success' | 'failed';
+
+  @ApiProperty()
+  amount: number;
+}
+
 export class OrderItemSummaryDto {
   @ApiProperty()
   id: string;
@@ -64,4 +78,13 @@ export class OrderResponseDto {
 
   @ApiProperty({ type: [OrderItemSummaryDto] })
   items: OrderItemSummaryDto[];
+
+  @ApiProperty({ type: [PaymentSummaryDto] })
+  payment: PaymentSummaryDto;
+
+  @ApiProperty()
+  created_at: Date;
+
+  @ApiProperty()
+  updated_at: Date;
 }

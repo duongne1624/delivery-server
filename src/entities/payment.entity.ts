@@ -15,7 +15,7 @@ export class Payment {
   id: string;
 
   @Column()
-  method: 'momo' | 'vnpay' | 'cod';
+  method: 'momo' | 'vnpay' | 'cod' | 'zalopay';
 
   @Column({
     type: 'enum',

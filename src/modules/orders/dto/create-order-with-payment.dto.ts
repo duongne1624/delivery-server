@@ -24,6 +24,7 @@ export enum PaymentMethod {
   COD = 'cod',
   MOMO = 'momo',
   VNPAY = 'vnpay',
+  ZALOPAY = 'zalopay',
 }
 
 export class CreateOrderWithPaymentDto {
@@ -35,10 +36,6 @@ export class CreateOrderWithPaymentDto {
   @ValidateNested({ each: true })
   @Type(() => OrderItemInput)
   items: OrderItemInput[];
-
-  @ApiProperty({ description: 'Tổng giá đơn hàng', example: 120000 })
-  @IsNumber()
-  total_price: number;
 
   @ApiProperty({
     description: 'Địa chỉ giao hàng',

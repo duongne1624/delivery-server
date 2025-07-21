@@ -1,7 +1,7 @@
 import * as crypto from 'crypto';
 import * as qs from 'qs';
 import { AppConfig } from '@config/app.config';
-import { format } from 'date-fns';
+import { format } from 'date-fns-tz';
 
 interface CreateVnpayUrlInput {
   orderId: string;
@@ -21,10 +21,12 @@ export function createVnpayPaymentUrl(
   const vnp_Locale = 'vn';
   const vnp_CurrCode = 'VND';
   const vnp_Command = 'pay';
-  const vnp_OrderInfo = input.orderDescription;
+  const vnp_OrderInfo = input.orderDescription.replace(/[^a-zA-Z0-9 -]/g, '');
   const vnp_OrderType = 'other';
   const vnp_IpAddr = clientIp === '::1' ? '127.0.0.1' : clientIp;
-  const vnp_CreateDate = format(new Date(), 'yyyyMMddHHmmss');
+  const vnp_CreateDate = format(new Date(), 'yyyyMMddHHmmss', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+  });
 
   const vnp_Params: Record<string, string> = {
     vnp_Version: '2.1.0',
@@ -41,32 +43,32 @@ export function createVnpayPaymentUrl(
     vnp_CreateDate,
   };
 
-  // B1: Sort by key
-  const sortedParams = sortObject(vnp_Params);
+  // Sort parameters
+  const sortedParams = Object.keys(vnp_Params)
+    .sort()
+    .reduce((obj: Record<string, string>, key) => {
+      obj[key] = vnp_Params[key];
+      return obj;
+    }, {});
 
-  // B2: Tạo dữ liệu để ký, không encode
+  // Create sign data
   const signData = Object.keys(sortedParams)
     .map((key) => `${key}=${sortedParams[key]}`)
     .join('&');
 
-  // B3: Ký HMAC SHA512
+  console.log('VNPay Sign Data:', signData);
+
+  // Generate secure hash
   const secureHash = crypto
     .createHmac('sha512', VNP_HASHSECRET)
-    .update(signData, 'utf-8')
+    .update(Buffer.from(signData, 'utf-8'))
     .digest('hex');
 
   sortedParams['vnp_SecureHash'] = secureHash;
 
-  // B4: Build final URL
-  const paymentUrl = `${VNP_URL}?${qs.stringify(sortedParams, { encode: false })}`;
-  return paymentUrl;
-}
+  // Build final URL
+  const paymentUrl = `${VNP_URL}?${qs.stringify(sortedParams, { encode: true })}`;
+  console.log('VNPay Payment URL:', paymentUrl);
 
-function sortObject(obj: Record<string, string>) {
-  const sorted: Record<string, string> = {};
-  const keys = Object.keys(obj).sort();
-  for (const key of keys) {
-    sorted[key] = obj[key];
-  }
-  return sorted;
+  return paymentUrl;
 }
