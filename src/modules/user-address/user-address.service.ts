@@ -45,6 +45,31 @@ export class UserAddressService {
     return this.addressRepo.save(address);
   }
 
+  async setDefaultAddress(userId: string, addressId: string): Promise<void> {
+    const address = await this.addressRepo.findOne({
+      where: { id: addressId, user_id: userId },
+    });
+
+    if (!address) {
+      throw new NotFoundException('Address not found');
+    }
+
+    await this.addressRepo.update({ user_id: userId }, { is_default: false });
+    await this.addressRepo.update({ id: addressId }, { is_default: true });
+  }
+
+  async getDefaultAddress(userId: string): Promise<UserAddress> {
+    const address = await this.addressRepo.findOne({
+      where: { user_id: userId, is_default: true },
+    });
+
+    if (!address) {
+      throw new NotFoundException('Default address not found');
+    }
+
+    return address;
+  }
+
   async remove(user_id: string, id: string) {
     const address = await this.findOne(user_id, id);
     return this.addressRepo.remove(address);

@@ -21,6 +21,7 @@ import {
   ApiResponse,
 } from '@nestjs/swagger';
 import { UserAddress } from '@entities/user-address.entity';
+import { SetDefaultAddressDto } from './dto/set-default-address.dto';
 
 @ApiTags('User Addresses')
 @ApiBearerAuth()
@@ -60,6 +61,25 @@ export class UserAddressController {
   })
   findOne(@Req() req: AuthRequest, @Param('id') id: string) {
     return this.service.findOne(req.user.userId, id);
+  }
+
+  @Get('default')
+  @ApiOperation({ summary: 'Get default address for current user' })
+  @ApiResponse({
+    status: 200,
+    description: 'Default address returned',
+    type: UserAddress,
+  })
+  async getDefaultAddress(@Req() req: AuthRequest) {
+    return this.service.getDefaultAddress(req.user.userId);
+  }
+
+  @Post('set-default')
+  @ApiOperation({ summary: 'Set default address for the user' })
+  @ApiResponse({ status: 200, description: 'Default address set successfully' })
+  async setDefault(@Req() req: AuthRequest, @Body() dto: SetDefaultAddressDto) {
+    await this.service.setDefaultAddress(req.user.userId, dto.address_id);
+    return { message: 'Default address set successfully' };
   }
 
   @Put(':id')
