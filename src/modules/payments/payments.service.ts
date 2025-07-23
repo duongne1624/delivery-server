@@ -12,6 +12,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Payment } from '@entities/payment.entity';
 import { Order } from '@entities/order.entity';
 import { format } from 'date-fns-tz';
+import { createVnpayPaymentUrl } from '@common/payment-gateway/vnpay.payment';
+import { createMomoPaymentUrl } from '@common/payment-gateway/momo.payment';
+import { createZaloPayPaymentUrl } from '@common/payment-gateway/zalopay.payment';
 
 // Interface cho kết quả tra cứu
 interface TransactionStatus {
@@ -358,5 +361,68 @@ export class PaymentsService {
         transactionId,
       };
     }
+  }
+
+  async createPayment(
+    order: Order,
+    method: 'momo' | 'vnpay' | 'cod' | 'zalopay',
+    clientIp: string
+  ): Promise<{ payment: Payment; paymentUrl?: string }> {
+    let payment = this.paymentRepo.create({
+      method,
+      status: 'pending',
+      amount: order.total_price,
+      order,
+    });
+
+    let paymentUrl: string | undefined;
+
+    switch (method) {
+      case 'cod':
+        payment = await this.paymentRepo.save(payment);
+        break;
+      case 'vnpay':
+        payment.transaction_id = `${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+        payment = await this.paymentRepo.save(payment);
+        paymentUrl = createVnpayPaymentUrl(
+          {
+            amount: order.total_price,
+            orderDescription: `Thanh toan don hang ${order.id}`,
+            orderId: order.id,
+          },
+          clientIp
+        );
+        break;
+      case 'momo':
+        payment.transaction_id = `${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+        payment = await this.paymentRepo.save(payment);
+        paymentUrl = createMomoPaymentUrl(
+          {
+            amount: order.total_price,
+            orderDescription: `Thanh toan don hang ${order.id}`,
+            orderId: order.id,
+          },
+          clientIp
+        );
+        break;
+      case 'zalopay':
+        payment.transaction_id = `${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+        payment = await this.paymentRepo.save(payment);
+        paymentUrl = createZaloPayPaymentUrl(
+          {
+            amount: order.total_price,
+            orderDescription: `Thanh toan don hang ${order.id}`,
+            orderId: order.id,
+          },
+          clientIp
+        );
+        break;
+      default:
+        throw new BadRequestException(
+          'Phương thức thanh toán không được hỗ trợ'
+        );
+    }
+
+    return { payment, paymentUrl };
   }
 }

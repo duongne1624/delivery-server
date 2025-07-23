@@ -5,7 +5,6 @@ import {
   ValidateNested,
   IsEnum,
   IsOptional,
-  IsNotEmpty,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -28,27 +27,41 @@ export enum PaymentMethod {
 }
 
 export class CreateOrderWithPaymentDto {
-  @ApiProperty({
-    description: 'Danh sách sản phẩm trong đơn hàng',
-    type: [OrderItemInput],
-  })
+  @ApiProperty({ type: [OrderItemInput] })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => OrderItemInput)
   items: OrderItemInput[];
 
-  @ApiProperty({
-    description: 'Địa chỉ giao hàng',
-    example: '123 Đường ABC, Q1',
-  })
-  @IsNotEmpty()
-  @IsString()
-  delivery_address: string;
-
   @ApiPropertyOptional({
-    description: 'Ghi chú thêm cho đơn hàng',
-    example: 'Không hành, giao buổi tối',
+    description: 'ID của địa chỉ có sẵn',
+    example: '4c85ef5b-1234-4eec-9af0-76de13f2d456',
   })
+  @IsOptional()
+  @IsString()
+  address_id?: string;
+
+  @ApiPropertyOptional({ example: '12 Lê Lợi, Quận 1, TP.HCM' })
+  @IsOptional()
+  @IsString()
+  delivery_address?: string;
+
+  @ApiPropertyOptional({ example: 10.762622 })
+  @IsOptional()
+  @IsNumber()
+  delivery_latitude?: number;
+
+  @ApiPropertyOptional({ example: 106.660172 })
+  @IsOptional()
+  @IsNumber()
+  delivery_longitude?: number;
+
+  @ApiPropertyOptional({ example: 'ChIJ0wzLpFQudTER3OAYwV_NeIM' })
+  @IsOptional()
+  @IsString()
+  delivery_place_id?: string;
+
+  @ApiPropertyOptional({ example: 'Không hành, gọi trước khi đến' })
   @IsOptional()
   @IsString()
   note?: string;

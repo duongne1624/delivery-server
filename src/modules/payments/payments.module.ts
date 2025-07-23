@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { PaymentsController } from './payments.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -10,7 +10,7 @@ import { HttpModule } from '@nestjs/axios';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Payment, Order]),
-    OrdersModule,
+    forwardRef(() => OrdersModule),
     HttpModule.register({
       timeout: 5000,
       maxRedirects: 5,
