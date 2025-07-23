@@ -8,14 +8,27 @@ import { Product } from '@entities/product.entity';
 import { User } from '@entities/user.entity';
 import { Payment } from '@entities/payment.entity';
 import { UsersModule } from '@modules/users/users.module';
+import { PaymentsModule } from '@modules/payments/payments.module';
+import { UserAddressService } from '@modules/user-address/user-address.service';
+import { UserAddressModule } from '@modules/user-address/user-address.module';
+import { UserAddress } from '@entities/user-address.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Order, OrderItem, Product, User, Payment]),
+    TypeOrmModule.forFeature([
+      Order,
+      OrderItem,
+      Product,
+      User,
+      UserAddress,
+      Payment,
+    ]),
     UsersModule,
+    PaymentsModule,
+    UserAddressModule,
   ],
   controllers: [OrdersController],
-  providers: [OrdersService],
+  providers: [OrdersService, UserAddressService],
   exports: [OrdersService],
 })
 export class OrdersModule {}

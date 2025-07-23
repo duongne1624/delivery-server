@@ -67,6 +67,15 @@ export class OrderResponseDto {
   @ApiProperty()
   delivery_address: string;
 
+  @ApiProperty({ required: false, type: 'number', nullable: true })
+  delivery_latitude?: number;
+
+  @ApiProperty({ required: false, type: 'number', nullable: true })
+  delivery_longitude?: number;
+
+  @ApiProperty({ required: false, type: 'string', nullable: true })
+  delivery_place_id?: string;
+
   @ApiProperty({ required: false })
   note?: string;
 
@@ -76,10 +85,16 @@ export class OrderResponseDto {
   @ApiProperty({ type: UserSummaryDto, nullable: true })
   shipper?: UserSummaryDto | null;
 
+  @ApiProperty({ required: false, type: 'string', nullable: true })
+  cancel_reason?: string;
+
+  @ApiProperty({ required: false, type: 'string', nullable: true })
+  shipper_confirmed_at?: Date;
+
   @ApiProperty({ type: [OrderItemSummaryDto] })
   items: OrderItemSummaryDto[];
 
-  @ApiProperty({ type: [PaymentSummaryDto] })
+  @ApiProperty({ type: PaymentSummaryDto })
   payment: PaymentSummaryDto;
 
   @ApiProperty()

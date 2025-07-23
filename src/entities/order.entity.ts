@@ -18,15 +18,19 @@ export class Order {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column({ nullable: false })
+  customer_id: string;
+
   @ManyToOne(() => User)
+  @JoinColumn({ name: 'customer_id' })
   customer: User;
 
   @Column({ nullable: true })
-  shipper_id: string;
+  shipper_id?: string;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'shipper_id' })
-  shipper: User;
+  shipper?: User;
 
   @Column({
     type: 'enum',
@@ -34,6 +38,12 @@ export class Order {
     default: 'pending',
   })
   status: 'pending' | 'confirmed' | 'delivering' | 'completed' | 'cancelled';
+
+  @Column({ nullable: true })
+  shipper_confirmed_at?: Date; // Thời gian shipper nhận đơn
+
+  @Column({ nullable: true })
+  cancel_reason?: string; // Lý do hủy đơn
 
   @Column('decimal', { precision: 10, scale: 2 })
   total_price: number;
@@ -48,10 +58,10 @@ export class Order {
   delivery_longitude: number;
 
   @Column({ nullable: true })
-  delivery_place_id: string;
+  delivery_place_id?: string;
 
   @Column({ nullable: true })
-  note: string;
+  note?: string;
 
   @OneToMany(() => OrderItem, (item) => item.order, {
     cascade: ['insert', 'update', 'remove'],
@@ -59,9 +69,9 @@ export class Order {
   items: OrderItem[];
 
   @OneToOne(() => Payment, (payment) => payment.order, {
-    cascade: ['insert', 'update'],
+    cascade: ['insert', 'update', 'remove'],
   })
-  payment: Payment;
+  payment?: Payment;
 
   @CreateDateColumn()
   created_at: Date;

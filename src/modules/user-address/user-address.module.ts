@@ -8,5 +8,6 @@ import { UserAddressController } from './user-address.controller';
   imports: [TypeOrmModule.forFeature([UserAddress])],
   providers: [UserAddressService],
   controllers: [UserAddressController],
+  exports: [UserAddressService],
 })
 export class UserAddressModule {}

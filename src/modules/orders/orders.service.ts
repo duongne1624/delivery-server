@@ -15,20 +15,19 @@ import {
   PaymentSummaryDto,
   UserSummaryDto,
 } from './dto/order-response.dto';
-import {
-  CreateOrderWithPaymentDto,
-  PaymentMethod,
-} from './dto/create-order-with-payment.dto';
+import { CreateOrderWithPaymentDto } from './dto/create-order-with-payment.dto';
 import { Payment } from '@entities/payment.entity';
-import { createVnpayPaymentUrl } from '@common/payment-gateway/vnpay.payment';
-import { createMomoPaymentUrl } from '@common/payment-gateway/momo.payment';
-import { createZaloPayPaymentUrl } from '@common/payment-gateway/zalopay.payment';
+import { PaymentsService } from '@modules/payments/payments.service';
+import { UserAddressService } from '@modules/user-address/user-address.service';
+import { UserAddress } from '@entities/user-address.entity';
 
 @Injectable()
 export class OrdersService {
   constructor(
     @InjectRepository(User)
     private userRepo: Repository<User>,
+    @InjectRepository(UserAddress)
+    private readonly userAddressRepository: Repository<UserAddress>,
     @InjectRepository(Order)
     private orderRepo: Repository<Order>,
     @InjectRepository(OrderItem)
@@ -36,7 +35,9 @@ export class OrdersService {
     @InjectRepository(Product)
     private productRepo: Repository<Product>,
     @InjectRepository(Payment)
-    private paymentRepo: Repository<Payment>
+    private paymentRepo: Repository<Payment>,
+    private paymentsService: PaymentsService,
+    private readonly userAddressService: UserAddressService
   ) {}
 
   async createWithPayment(
@@ -44,14 +45,22 @@ export class OrdersService {
     dto: CreateOrderWithPaymentDto,
     clientIp: string
   ): Promise<{ order: OrderResponseDto; paymentUrl?: string }> {
-    console.log(
-      `Creating order for user ${userId} with payment method ${dto.payment_method}`
-    );
-
     // Validate user
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
 
+    // Validate address
+    if (dto.address_id) {
+      const address = await this.userAddressService.findOne(
+        user.id,
+        dto.address_id
+      );
+
+      dto.delivery_address = address.address;
+      dto.delivery_latitude = address.latitude;
+      dto.delivery_longitude = address.longitude;
+      dto.delivery_place_id = address.place_id;
+    }
     // Tính tổng giá trị và tạo items
     let total_price = 0;
     const items: OrderItem[] = [];
@@ -79,93 +88,33 @@ export class OrdersService {
     // Tạo đơn hàng
     const order = this.orderRepo.create({
       customer: user,
+      customer_id: user.id,
       delivery_address: dto.delivery_address,
       note: dto.note,
       status: 'pending',
       total_price,
       items,
+      delivery_latitude: dto.delivery_latitude,
+      delivery_longitude: dto.delivery_longitude,
+      delivery_place_id: dto.delivery_place_id,
     });
 
     const savedOrder = await this.orderRepo.save(order);
-    console.log('Saved Order:', savedOrder);
 
-    // Tạo thanh toán
-    const payment = this.paymentRepo.create({
-      method: dto.payment_method,
-      status: 'pending',
-      amount: total_price,
-      order: savedOrder,
-    });
+    // Tạo payment qua PaymentsService
+    const { payment, paymentUrl } = await this.paymentsService.createPayment(
+      savedOrder,
+      dto.payment_method,
+      clientIp
+    );
 
-    let paymentUrl: string | undefined;
-
-    switch (dto.payment_method) {
-      case PaymentMethod.COD:
-        await this.paymentRepo.save(payment);
-        break;
-      case PaymentMethod.VNPAY:
-        payment.transaction_id = `${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-        await this.paymentRepo.save(payment);
-        paymentUrl = createVnpayPaymentUrl(
-          {
-            amount: total_price,
-            orderDescription: `Thanh toan don hang ${savedOrder.id}`,
-            orderId: savedOrder.id,
-          },
-          clientIp
-        );
-        break;
-      case PaymentMethod.MOMO:
-        payment.transaction_id = `${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-        await this.paymentRepo.save(payment);
-        paymentUrl = createMomoPaymentUrl(
-          {
-            amount: total_price,
-            orderDescription: `Thanh toan don hang ${savedOrder.id}`,
-            orderId: savedOrder.id,
-          },
-          clientIp
-        );
-        break;
-      case PaymentMethod.ZALOPAY:
-        payment.transaction_id = `${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-        await this.paymentRepo.save(payment);
-        paymentUrl = createZaloPayPaymentUrl(
-          {
-            amount: total_price,
-            orderDescription: `Thanh toan don hang ${savedOrder.id}`,
-            orderId: savedOrder.id,
-          },
-          clientIp
-        );
-        break;
-      default:
-        throw new BadRequestException(
-          'Phương thức thanh toán không được hỗ trợ'
-        );
-    }
+    savedOrder.payment = payment;
+    await this.orderRepo.save(savedOrder);
 
     console.log('Payment URL:', paymentUrl);
 
     return {
-      order: {
-        id: savedOrder.id,
-        total_price: savedOrder.total_price,
-        status: savedOrder.status,
-        delivery_address: savedOrder.delivery_address,
-        note: savedOrder.note,
-        customer: savedOrder.customer,
-        shipper: savedOrder.shipper,
-        items: savedOrder.items,
-        payment: {
-          method: payment.method,
-          status: payment.status,
-          transaction_id: payment.transaction_id,
-          amount: payment.amount,
-        },
-        created_at: savedOrder.created_at,
-        updated_at: savedOrder.updated_at,
-      },
+      order: this.mapOrderToDto(savedOrder),
       paymentUrl,
     };
   }
@@ -225,12 +174,17 @@ export class OrdersService {
     if (!shipper || !order) throw new NotFoundException();
 
     order.shipper = shipper;
+    order.shipper_id = shipper.id;
     order.status = 'confirmed';
+    order.shipper_confirmed_at = new Date();
     const saved = await this.orderRepo.save(order);
     return this.mapOrderToDto(saved);
   }
 
   private mapUserToSummary(user: User): UserSummaryDto {
+    if (!user) {
+      return { id: '', name: '', phone: '' };
+    }
     return {
       id: user.id,
       name: user.name,
@@ -239,35 +193,66 @@ export class OrdersService {
   }
 
   private mapPaymentToSummary(payment: Payment): PaymentSummaryDto {
+    if (!payment) {
+      return {
+        method: 'cod',
+        transaction_id: '',
+        status: 'pending',
+        amount: 0,
+      };
+    }
     return {
       method: payment.method,
-      transaction_id: payment.transaction_id,
+      transaction_id: payment.transaction_id ?? '',
       status: payment.status,
       amount: payment.amount,
     };
   }
 
   private mapOrderToDto = (order: Order): OrderResponseDto => {
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
     return {
       id: order.id,
       total_price: Number(order.total_price),
       status: order.status,
       delivery_address: order.delivery_address,
+      delivery_latitude:
+        typeof order.delivery_latitude === 'number'
+          ? order.delivery_latitude
+          : undefined,
+      delivery_longitude:
+        typeof order.delivery_longitude === 'number'
+          ? order.delivery_longitude
+          : undefined,
+      delivery_place_id: order.delivery_place_id,
       note: order.note,
       customer: this.mapUserToSummary(order.customer),
-      shipper: order.shipper ? this.mapUserToSummary(order.shipper) : null,
-      items: order.items.map((item) => ({
-        id: item.id,
-        quantity: item.quantity,
-        price: Number(item.price),
-        product: {
-          id: item.product.id,
-          name: item.product.name,
-          price: Number(item.product.price),
-          image: item.product.image,
-        },
-      })),
-      payment: this.mapPaymentToSummary(order.payment),
+      shipper: order.shipper ? this.mapUserToSummary(order.shipper) : undefined,
+      shipper_confirmed_at: order.shipper_confirmed_at,
+      cancel_reason: order.cancel_reason,
+      items: Array.isArray(order.items)
+        ? order.items.map((item) => ({
+            id: item.id,
+            quantity: item.quantity,
+            price: Number(item.price),
+            product: {
+              id: item.product.id,
+              name: item.product.name,
+              price: Number(item.product.price),
+              image: item.product.image,
+            },
+          }))
+        : [],
+      payment: order.payment
+        ? this.mapPaymentToSummary(order.payment)
+        : {
+            method: 'cod',
+            transaction_id: '',
+            status: 'pending',
+            amount: 0,
+          },
       created_at: order.created_at,
       updated_at: order.updated_at,
     };
@@ -289,6 +274,7 @@ export class OrdersService {
       throw new ForbiddenException('Chỉ được hủy đơn khi đang chờ xử lý');
 
     order.status = 'cancelled';
+    order.cancel_reason = 'Khách hủy đơn';
     const saved = await this.orderRepo.save(order);
     return this.mapOrderToDto(saved);
   }

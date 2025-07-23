@@ -20,9 +20,9 @@ import { RestaurantsModule } from '@modules/restaurants/restaurants.module';
 import { CategoriesModule } from '@modules/categories/categories.module';
 import { ProductsModule } from '@modules/products/products.module';
 import { OrdersModule } from '@modules/orders/orders.module';
-import { AssignmentsModule } from '@modules/assignments/assignments.module';
 import { PaymentsModule } from '@modules/payments/payments.module';
 import { UserAddressModule } from '@modules/user-address/user-address.module';
+import { ShipperModule } from '@modules/shipper/shipper.module';
 // import { NotificationsModule } from '@modules/notifications/notifications.module';
 // import { FeedbackModule } from '@modules/feedback/feedback.module';
 // import { LogsModule } from '@modules/logs/logs.module';
@@ -44,8 +44,8 @@ import { UserAddressModule } from '@modules/user-address/user-address.module';
     CategoriesModule,
     ProductsModule,
     OrdersModule,
-    AssignmentsModule,
     PaymentsModule,
+    ShipperModule,
     // NotificationsModule,
     // FeedbackModule,
     // LogsModule,
