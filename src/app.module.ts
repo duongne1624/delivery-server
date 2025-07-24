@@ -23,7 +23,7 @@ import { OrdersModule } from '@modules/orders/orders.module';
 import { PaymentsModule } from '@modules/payments/payments.module';
 import { UserAddressModule } from '@modules/user-address/user-address.module';
 import { ShipperModule } from '@modules/shipper/shipper.module';
-// import { NotificationsModule } from '@modules/notifications/notifications.module';
+import { NotificationsModule } from '@modules/notifications/notifications.module';
 // import { FeedbackModule } from '@modules/feedback/feedback.module';
 // import { LogsModule } from '@modules/logs/logs.module';
 
@@ -46,7 +46,7 @@ import { ShipperModule } from '@modules/shipper/shipper.module';
     OrdersModule,
     PaymentsModule,
     ShipperModule,
-    // NotificationsModule,
+    NotificationsModule,
     // FeedbackModule,
     // LogsModule,
   ],

@@ -33,8 +33,20 @@ export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Tạo đơn hàng + thanh toán' })
-  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Tạo đơn hàng + thanh toán (COD hoặc online)' })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Kết quả tạo đơn hàng: nếu COD trả về order, nếu online trả về paymentUrl',
+    schema: {
+      example: {
+        order: {
+          id: 'orderId',
+        },
+        paymentUrl: 'https://payment-gateway.com/redirect-url',
+      },
+    },
+  })
   async createWithPayment(
     @Body() dto: CreateOrderWithPaymentDto,
     @Req() req: AuthRequest
@@ -50,6 +62,13 @@ export class OrdersController {
       dto,
       ip
     );
+    // Trả về rõ ràng cho frontend
+    if (result.order) {
+      return { order: result.order };
+    }
+    if (result.paymentUrl) {
+      return { paymentUrl: result.paymentUrl };
+    }
     return result;
   }
 

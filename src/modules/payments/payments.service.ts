@@ -364,15 +364,33 @@ export class PaymentsService {
   }
 
   async createPayment(
-    order: Order,
+    order: Order | null,
     method: 'momo' | 'vnpay' | 'cod' | 'zalopay',
-    clientIp: string
+    clientIp: string,
+    metadata?: {
+      userId?: string;
+      items?: any[];
+      delivery_address?: string;
+      note?: string;
+      delivery_latitude?: number;
+      delivery_longitude?: number;
+      delivery_place_id?: string;
+      total_price?: number;
+    }
   ): Promise<{ payment: Payment; paymentUrl?: string }> {
+    const amount = order ? order.total_price : metadata?.total_price || 0;
+    const orderId = order
+      ? order.id
+      : `${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+    const orderDescription = order
+      ? `Thanh toan don hang ${order.id}`
+      : 'Thanh toan don hang';
+
     let payment = this.paymentRepo.create({
       method,
       status: 'pending',
-      amount: order.total_price,
-      order,
+      amount,
+      order: order || undefined,
     });
 
     let paymentUrl: string | undefined;
@@ -386,9 +404,9 @@ export class PaymentsService {
         payment = await this.paymentRepo.save(payment);
         paymentUrl = createVnpayPaymentUrl(
           {
-            amount: order.total_price,
-            orderDescription: `Thanh toan don hang ${order.id}`,
-            orderId: order.id,
+            amount,
+            orderDescription,
+            orderId,
           },
           clientIp
         );
@@ -398,9 +416,9 @@ export class PaymentsService {
         payment = await this.paymentRepo.save(payment);
         paymentUrl = createMomoPaymentUrl(
           {
-            amount: order.total_price,
-            orderDescription: `Thanh toan don hang ${order.id}`,
-            orderId: order.id,
+            amount,
+            orderDescription,
+            orderId,
           },
           clientIp
         );
@@ -410,9 +428,9 @@ export class PaymentsService {
         payment = await this.paymentRepo.save(payment);
         paymentUrl = createZaloPayPaymentUrl(
           {
-            amount: order.total_price,
-            orderDescription: `Thanh toan don hang ${order.id}`,
-            orderId: order.id,
+            amount,
+            orderDescription,
+            orderId,
           },
           clientIp
         );

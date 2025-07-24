@@ -15,9 +15,13 @@ import {
   PaymentSummaryDto,
   UserSummaryDto,
 } from './dto/order-response.dto';
-import { CreateOrderWithPaymentDto } from './dto/create-order-with-payment.dto';
+import {
+  CreateOrderWithPaymentDto,
+  PaymentMethod,
+} from './dto/create-order-with-payment.dto';
 import { Payment } from '@entities/payment.entity';
 import { PaymentsService } from '@modules/payments/payments.service';
+import { NotificationsGateway } from '@modules/notifications/notifications.gateway';
 import { UserAddressService } from '@modules/user-address/user-address.service';
 import { UserAddress } from '@entities/user-address.entity';
 
@@ -37,14 +41,15 @@ export class OrdersService {
     @InjectRepository(Payment)
     private paymentRepo: Repository<Payment>,
     private paymentsService: PaymentsService,
-    private readonly userAddressService: UserAddressService
+    private readonly userAddressService: UserAddressService,
+    private readonly notificationGateway: NotificationsGateway
   ) {}
 
   async createWithPayment(
     userId: string,
     dto: CreateOrderWithPaymentDto,
     clientIp: string
-  ): Promise<{ order: OrderResponseDto; paymentUrl?: string }> {
+  ): Promise<{ paymentUrl?: string; order?: OrderResponseDto }> {
     // Validate user
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
@@ -61,10 +66,8 @@ export class OrdersService {
       dto.delivery_longitude = address.longitude;
       dto.delivery_place_id = address.place_id;
     }
-    // Tính tổng giá trị và tạo items
+    // Tính tổng giá trị và tạo items (chỉ để tính tiền, chưa lưu DB)
     let total_price = 0;
-    const items: OrderItem[] = [];
-
     for (const itemDto of dto.items) {
       if (itemDto.quantity <= 0) {
         throw new BadRequestException('Số lượng sản phẩm phải lớn hơn 0');
@@ -74,49 +77,108 @@ export class OrdersService {
       });
       if (!product)
         throw new NotFoundException(`Product ${itemDto.product_id} not found`);
-
-      const item = this.itemRepo.create({
-        product,
-        quantity: itemDto.quantity,
-        price: product.price,
-      });
-
       total_price += product.price * itemDto.quantity;
-      items.push(item);
     }
 
-    // Tạo đơn hàng
+    if (dto.payment_method === PaymentMethod.COD) {
+      // Tạo order luôn cho COD
+      const order = await this.createOrderCOD(user, dto, total_price);
+      if (!order) throw new BadRequestException('Tạo đơn hàng thất bại');
+
+      // Gửi thông báo cho user
+      await this.sendOrderCreatedNotification(order);
+
+      return { order: this.mapOrderToDto(order) };
+    }
+
+    // Nếu là online, chỉ tạo payment, chưa tạo order
+    const { paymentUrl } = await this.paymentsService.createPayment(
+      null,
+      dto.payment_method,
+      clientIp,
+      {
+        userId: user.id,
+        items: dto.items,
+        delivery_address: dto.delivery_address,
+        note: dto.note,
+        delivery_latitude: dto.delivery_latitude,
+        delivery_longitude: dto.delivery_longitude,
+        delivery_place_id: dto.delivery_place_id,
+        total_price,
+      }
+    );
+
+    return {
+      paymentUrl,
+    };
+  }
+
+  // Gửi thông báo khi tạo đơn hàng thành công (COD)
+  private async sendOrderCreatedNotification(order: Order) {
+    // Gửi socket tới user qua NotificationGateway
+    await this.notificationGateway.sendNotification(order.customer_id, {
+      title: 'Đặt đơn hàng thành công',
+      body: `Đơn hàng #${order.id} đã được tạo thành công!`,
+      status: 1,
+      time: new Date(),
+      read: false,
+      orderId: order.id,
+    });
+  }
+
+  // Hàm tạo order cho COD
+  private async createOrderCOD(
+    user: User,
+    dto: CreateOrderWithPaymentDto,
+    total_price: number
+  ): Promise<Order> {
+    // Tạo order entity
+
     const order = this.orderRepo.create({
-      customer: user,
       customer_id: user.id,
       delivery_address: dto.delivery_address,
-      note: dto.note,
-      status: 'pending',
-      total_price,
-      items,
       delivery_latitude: dto.delivery_latitude,
       delivery_longitude: dto.delivery_longitude,
       delivery_place_id: dto.delivery_place_id,
+      note: dto.note,
+      status: 'pending',
+      total_price,
     });
-
     const savedOrder = await this.orderRepo.save(order);
 
-    // Tạo payment qua PaymentsService
-    const { payment, paymentUrl } = await this.paymentsService.createPayment(
-      savedOrder,
-      dto.payment_method,
-      clientIp
-    );
+    // Tạo order items
+    for (const itemDto of dto.items) {
+      const product = await this.productRepo.findOne({
+        where: { id: itemDto.product_id },
+      });
+      if (!product)
+        throw new NotFoundException(`Product ${itemDto.product_id} not found`);
+      const item = this.itemRepo.create({
+        order: savedOrder,
+        product: product,
+        quantity: itemDto.quantity,
+        price: product.price,
+      });
+      await this.itemRepo.save(item);
+    }
 
-    savedOrder.payment = payment;
-    await this.orderRepo.save(savedOrder);
+    // Tạo payment entity cho COD
+    const payment = this.paymentRepo.create({
+      order: savedOrder,
+      method: 'cod',
+      status: 'pending',
+      amount: total_price,
+    });
+    await this.paymentRepo.save(payment);
 
-    console.log('Payment URL:', paymentUrl);
-
-    return {
-      order: this.mapOrderToDto(savedOrder),
-      paymentUrl,
-    };
+    // Lấy lại order với relations
+    const fullOrder = await this.orderRepo.findOne({
+      where: { id: savedOrder.id },
+      relations: ['items', 'items.product', 'customer', 'shipper', 'payment'],
+    });
+    if (!fullOrder)
+      throw new NotFoundException('Không tìm thấy đơn hàng sau khi tạo');
+    return fullOrder;
   }
 
   // Lấy các đơn đã hoàn thành hoặc đã hủy của user
