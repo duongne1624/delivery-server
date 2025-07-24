@@ -88,8 +88,8 @@ export class OrderResponseDto {
   @ApiProperty({ required: false, type: 'string', nullable: true })
   cancel_reason?: string;
 
-  @ApiProperty({ required: false, type: 'string', nullable: true })
-  shipper_confirmed_at?: Date;
+  @ApiProperty()
+  shipper_confirmed_at?: string;
 
   @ApiProperty({ type: [OrderItemSummaryDto] })
   items: OrderItemSummaryDto[];

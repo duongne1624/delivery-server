@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { Order } from '@entities/order.entity';
 import { User } from '@entities/user.entity';
 import { OrderItem } from '@entities/order-item.entity';
@@ -181,6 +181,15 @@ export class OrdersService {
     return this.mapOrderToDto(saved);
   }
 
+  async findPendingOrdersForShipper(): Promise<OrderResponseDto[]> {
+    const orders = await this.orderRepo.find({
+      where: { status: 'pending', shipper_id: IsNull() },
+      relations: ['items', 'items.product', 'shipper', 'customer', 'payment'],
+      order: { created_at: 'DESC' },
+    });
+    return orders.map(this.mapOrderToDto);
+  }
+
   private mapUserToSummary(user: User): UserSummaryDto {
     if (!user) {
       return { id: '', name: '', phone: '' };
@@ -218,19 +227,17 @@ export class OrdersService {
       total_price: Number(order.total_price),
       status: order.status,
       delivery_address: order.delivery_address,
-      delivery_latitude:
-        typeof order.delivery_latitude === 'number'
-          ? order.delivery_latitude
-          : undefined,
-      delivery_longitude:
-        typeof order.delivery_longitude === 'number'
-          ? order.delivery_longitude
-          : undefined,
+      delivery_latitude: order.delivery_latitude
+        ? Number(order.delivery_latitude)
+        : undefined,
+      delivery_longitude: order.delivery_longitude
+        ? Number(order.delivery_longitude)
+        : undefined,
       delivery_place_id: order.delivery_place_id,
       note: order.note,
       customer: this.mapUserToSummary(order.customer),
       shipper: order.shipper ? this.mapUserToSummary(order.shipper) : undefined,
-      shipper_confirmed_at: order.shipper_confirmed_at,
+      shipper_confirmed_at: order.shipper_confirmed_at?.toISOString(),
       cancel_reason: order.cancel_reason,
       items: Array.isArray(order.items)
         ? order.items.map((item) => ({

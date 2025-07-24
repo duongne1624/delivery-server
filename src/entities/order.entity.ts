@@ -39,11 +39,11 @@ export class Order {
   })
   status: 'pending' | 'confirmed' | 'delivering' | 'completed' | 'cancelled';
 
-  @Column({ nullable: true })
-  shipper_confirmed_at?: Date; // Thời gian shipper nhận đơn
+  @Column({ type: 'timestamp', nullable: true })
+  shipper_confirmed_at?: Date;
 
   @Column({ nullable: true })
-  cancel_reason?: string; // Lý do hủy đơn
+  cancel_reason?: string;
 
   @Column('decimal', { precision: 10, scale: 2 })
   total_price: number;
@@ -71,6 +71,7 @@ export class Order {
   @OneToOne(() => Payment, (payment) => payment.order, {
     cascade: ['insert', 'update', 'remove'],
   })
+  @JoinColumn()
   payment?: Payment;
 
   @CreateDateColumn()
