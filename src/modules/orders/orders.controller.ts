@@ -39,10 +39,6 @@ export class OrdersController {
     @Body() dto: CreateOrderWithPaymentDto,
     @Req() req: AuthRequest
   ) {
-    // const reqIp =
-    //   req.headers['x-forwarded-for'] ||
-    //   req.connection.remoteAddress ||
-    //   req.socket.remoteAddress;
     const reqIp =
       req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
     const ip = (typeof reqIp === 'string' ? reqIp : reqIp[0]).replace(
@@ -74,11 +70,28 @@ export class OrdersController {
     return this.ordersService.findAllOrder();
   }
 
-  @Get('get-by-user')
-  @ApiOperation({ summary: 'List all orders of User' })
-  @ApiResponse({ status: 200, description: 'List of all categories' })
-  findAll(@Req() req: AuthRequest): Promise<OrderResponseDto[]> {
-    return this.ordersService.findAll(req.user.userId);
+  @Get('get-history')
+  @ApiOperation({
+    summary: 'Lấy danh sách đơn đã hoàn thành hoặc đã hủy của user',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Danh sách đơn đã hoàn thành hoặc đã hủy',
+  })
+  getHistoryOrders(@Req() req: AuthRequest): Promise<OrderResponseDto[]> {
+    return this.ordersService.findCompletedOrCancelledOrders(req.user.userId);
+  }
+
+  @Get('get-current')
+  @ApiOperation({
+    summary: 'Lấy danh sách đơn hiện tại của user (chưa hoàn thành hoặc hủy)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Danh sách đơn hiện tại',
+  })
+  getCurrentOrders(@Req() req: AuthRequest): Promise<OrderResponseDto[]> {
+    return this.ordersService.findCurrentOrders(req.user.userId);
   }
 
   @Get(':id')

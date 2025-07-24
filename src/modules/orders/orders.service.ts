@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
+import { IsNull, Not, Repository } from 'typeorm';
 import { Order } from '@entities/order.entity';
 import { User } from '@entities/user.entity';
 import { OrderItem } from '@entities/order-item.entity';
@@ -119,13 +119,34 @@ export class OrdersService {
     };
   }
 
-  async findAll(userId): Promise<OrderResponseDto[]> {
+  // Lấy các đơn đã hoàn thành hoặc đã hủy của user
+  async findCompletedOrCancelledOrders(
+    userId: string
+  ): Promise<OrderResponseDto[]> {
     const orders = await this.orderRepo.find({
-      where: { customer: { id: userId } },
+      where: [
+        { customer: { id: userId }, status: 'completed' },
+        { customer: { id: userId }, status: 'cancelled' },
+      ],
       relations: ['items', 'items.product', 'shipper', 'customer', 'payment'],
       order: { created_at: 'DESC' },
     });
     return orders.map(this.mapOrderToDto);
+  }
+
+  // Lấy các đơn hiện tại (chưa hoàn thành hoặc hủy) của user
+  async findCurrentOrders(userId: string): Promise<OrderResponseDto[]> {
+    const orders = await this.orderRepo.find({
+      where: {
+        customer: { id: userId },
+        status: Not('completed'),
+      },
+      relations: ['items', 'items.product', 'shipper', 'customer', 'payment'],
+      order: { created_at: 'DESC' },
+    });
+    // Loại bỏ đơn đã hủy
+    const filtered = orders.filter((o) => o.status !== 'cancelled');
+    return filtered.map(this.mapOrderToDto);
   }
 
   async findAllOrder(): Promise<OrderResponseDto[]> {
