@@ -82,6 +82,7 @@ export class AppConfig {
     const config = {
       url: process.env.REDIS_URL || '',
       host: process.env.REDIS_HOST || '',
+      user: process.env.REDIS_USER || '',
       port: parseInt(process.env.REDIS_PORT ?? '6379', 10),
       password: process.env.REDIS_PASSWORD || '',
       db: process.env.REDIS_DB || '',
@@ -208,7 +209,7 @@ export class AppConfig {
       ZALOPAY_APP_ID: process.env.ZALOPAY_APP_ID || '',
       ZALOPAY_KEY1: process.env.ZALOPAY_KEY1 || '',
       ZALOPAY_KEY2: process.env.ZALOPAY_KEY2 || '',
-      ZALOPAY_RETURN_URL: this.paymentReturnUrl,
+      ZALOPAY_RETURN_URL: `${this.paymentReturnUrl}/payments/callback/zalopay`,
       ZALOPAY_REQUEST_URL: this.isProduction
         ? process.env.ZALOPAY_REQUEST_URL || 'https://api.zalopay.vn/v2/create'
         : process.env.ZALOPAY_REQUEST_URL ||

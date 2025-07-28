@@ -23,15 +23,13 @@ import { Payment } from '@entities/payment.entity';
 import { PaymentsService } from '@modules/payments/payments.service';
 import { NotificationsGateway } from '@modules/notifications/notifications.gateway';
 import { UserAddressService } from '@modules/user-address/user-address.service';
-import { UserAddress } from '@entities/user-address.entity';
+import { RedisService } from '@shared/redis/redis.service';
 
 @Injectable()
 export class OrdersService {
   constructor(
     @InjectRepository(User)
     private userRepo: Repository<User>,
-    @InjectRepository(UserAddress)
-    private readonly userAddressRepository: Repository<UserAddress>,
     @InjectRepository(Order)
     private orderRepo: Repository<Order>,
     @InjectRepository(OrderItem)
@@ -42,7 +40,8 @@ export class OrdersService {
     private paymentRepo: Repository<Payment>,
     private paymentsService: PaymentsService,
     private readonly userAddressService: UserAddressService,
-    private readonly notificationGateway: NotificationsGateway
+    private readonly notificationGateway: NotificationsGateway,
+    private redis: RedisService
   ) {}
 
   async createWithPayment(
@@ -113,6 +112,67 @@ export class OrdersService {
     };
   }
 
+  async createOrder(redisKey: string, payment_id: string): Promise<string> {
+    // Lấy dữ liệu từ Redis
+    const orderDataString = await this.redis.get(redisKey);
+    if (!orderDataString) {
+      throw new NotFoundException('Pending order not found or expired');
+    }
+
+    // Parse dữ liệu
+    const orderData = JSON.parse(orderDataString);
+
+    // Tạo đơn hàng trong cơ sở dữ liệu
+    const order = new Order();
+    order.customer_id = orderData.userId;
+    order.total_price = orderData.total_price;
+    order.delivery_address = orderData.delivery_address;
+    order.note = orderData.note;
+    order.delivery_latitude = orderData.delivery_latitude;
+    order.delivery_longitude = orderData.delivery_longitude;
+    order.delivery_place_id = orderData.delivery_place_id;
+    order.status = 'pending';
+
+    // Tạo các item cho đơn hàng
+    order.items = [];
+    for (const itemDto of orderData.items) {
+      const product = await this.productRepo.findOne({
+        where: { id: itemDto.product_id },
+      });
+      if (!product)
+        throw new NotFoundException(`Product ${itemDto.product_id} not found`);
+
+      const orderItem = new OrderItem();
+      orderItem.product = product;
+      orderItem.quantity = itemDto.quantity;
+      orderItem.price = product.price;
+      order.items.push(orderItem);
+    }
+
+    // Lưu đơn hàng
+    const savedOrder = await this.orderRepo.save(order);
+
+    // Lưu vào payment
+    const payment = await this.paymentRepo.findOne({
+      where: { id: payment_id },
+    });
+
+    if (payment) {
+      payment.order = order;
+      await this.paymentRepo.save(payment);
+      order.payment = payment;
+      await this.orderRepo.save(order);
+    }
+
+    // Xóa dữ liệu trong Redis
+    await this.redis.del(redisKey);
+
+    // Gửi thông báo
+    await this.sendOrderCreatedNotification(savedOrder);
+
+    return savedOrder.id;
+  }
+
   // Gửi thông báo khi tạo đơn hàng thành công (COD)
   private async sendOrderCreatedNotification(order: Order) {
     // Gửi socket tới user qua NotificationGateway
@@ -169,7 +229,11 @@ export class OrdersService {
       status: 'pending',
       amount: total_price,
     });
-    await this.paymentRepo.save(payment);
+    const savedPayment = await this.paymentRepo.save(payment);
+
+    order.payment = savedPayment;
+
+    await this.orderRepo.save(order);
 
     // Lấy lại order với relations
     const fullOrder = await this.orderRepo.findOne({
