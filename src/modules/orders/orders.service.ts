@@ -104,6 +104,7 @@ export class OrdersService {
         delivery_longitude: dto.delivery_longitude,
         delivery_place_id: dto.delivery_place_id,
         total_price,
+        return_url: dto.return_url,
       }
     );
 

@@ -41,6 +41,7 @@ export class PaymentsService {
       delivery_longitude?: number;
       delivery_place_id?: string;
       total_price?: number;
+      return_url?: string;
     }
   ): Promise<{ payment: Payment; paymentUrl?: string }> {
     const amount = order ? order.total_price : metadata?.total_price || 0;
@@ -103,6 +104,7 @@ export class PaymentsService {
             amount,
             orderDescription,
             orderId,
+            return_url: metadata?.return_url,
           },
           clientIp,
           this.httpService

@@ -8,6 +8,7 @@ interface CreateZaloPayUrlInput {
   orderId: string;
   amount: number;
   orderDescription: string;
+  return_url?: string;
 }
 
 export async function createZaloPayPaymentUrl(
@@ -37,7 +38,7 @@ export async function createZaloPayPaymentUrl(
   const appTime = Date.now();
   const embedData = JSON.stringify({});
   const items = JSON.stringify([]);
-  const bankCode = 'zalopayapp';
+  const bankCode = '';
   const callbackUrl = ZALOPAY_RETURN_URL;
 
   const rawSignature = `${appId}|${appTransId}|${appUser}|${amount}|${appTime}|${embedData}|${items}`;
@@ -57,6 +58,7 @@ export async function createZaloPayPaymentUrl(
     callback_url: callbackUrl,
     description,
     mac,
+    return_url: input.return_url,
   };
 
   try {
