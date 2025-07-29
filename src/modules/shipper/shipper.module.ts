@@ -11,6 +11,13 @@ import { Payment } from '@entities/payment.entity';
 import { OrdersModule } from '@modules/orders/orders.module';
 import { UsersModule } from '@modules/users/users.module';
 import { PaymentsModule } from '@modules/payments/payments.module';
+import { NotificationsGateway } from '@modules/notifications/notifications.gateway';
+import { NotificationsService } from '@modules/notifications/notifications.service';
+import { MongooseModule } from '@nestjs/mongoose';
+import {
+  Notification,
+  NotificationSchema,
+} from '@modules/notifications/notification.schema';
 
 @Module({
   imports: [
@@ -22,11 +29,14 @@ import { PaymentsModule } from '@modules/payments/payments.module';
       Product,
       Payment,
     ]),
+    MongooseModule.forFeature([
+      { name: Notification.name, schema: NotificationSchema },
+    ]),
     OrdersModule,
     UsersModule,
     PaymentsModule,
   ],
   controllers: [ShipperController],
-  providers: [ShipperService],
+  providers: [ShipperService, NotificationsGateway, NotificationsService],
 })
 export class ShipperModule {}

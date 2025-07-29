@@ -34,8 +34,9 @@ export class NotificationsGateway {
   ) {
     // Lưu thông báo vào database
     await this.notificationsService.createNotification(userId, notification);
+    console.log('notification', { userId, ...notification });
     // Gửi thông báo đến client cụ thể
-    this.server.to(userId).emit('notification', { userId, ...notification });
+    this.server.to(userId).emit('notification', { ...notification });
   }
 
   @SubscribeMessage('join')

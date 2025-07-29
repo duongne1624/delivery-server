@@ -10,6 +10,6 @@ import { Order } from '@entities/order.entity';
   imports: [TypeOrmModule.forFeature([User, Order])],
   providers: [UsersService],
   controllers: [UsersController],
-  exports: [UsersService],
+  exports: [UsersService, TypeOrmModule],
 })
 export class UsersModule {}

@@ -1,61 +1,84 @@
-import * as crypto from 'crypto';
-import * as qs from 'qs';
 import { AppConfig } from '@config/app.config';
+import { HttpService } from '@nestjs/axios';
+import { BadRequestException } from '@nestjs/common';
+import { firstValueFrom } from 'rxjs';
+import { createHmac } from 'crypto';
 
 interface CreateZaloPayUrlInput {
   orderId: string;
   amount: number;
   orderDescription: string;
+  return_url?: string;
 }
 
-export function createZaloPayPaymentUrl(
+export async function createZaloPayPaymentUrl(
   input: CreateZaloPayUrlInput,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  clientIp: string
-): string {
+  clientIp: string,
+  httpService: HttpService
+): Promise<string> {
   const {
     ZALOPAY_APP_ID,
     ZALOPAY_KEY1,
     ZALOPAY_REQUEST_URL,
     ZALOPAY_RETURN_URL,
   } = AppConfig.zalopay;
+  const now = new Date(Date.now());
 
-  const appTransId = `${Date.now()}_${input.orderId}`;
+  const year = now.getFullYear().toString().slice(-2);
+  const month = ('0' + (now.getMonth() + 1)).slice(-2);
+  const day = ('0' + now.getDate()).slice(-2);
+
+  const formattedDate = `${year}${month}${day}`;
+
+  const appTransId = `${formattedDate}_${input.orderId}`;
   const amount = Math.round(input.amount).toString();
   const description = input.orderDescription.replace(/[^a-zA-Z0-9 -]/g, '');
   const appId = ZALOPAY_APP_ID;
-  const appUser = 'user123';
+  const appUser = 'Thái Dương';
   const appTime = Date.now();
   const embedData = JSON.stringify({});
   const items = JSON.stringify([]);
   const bankCode = '';
   const callbackUrl = ZALOPAY_RETURN_URL;
 
-  const rawSignature = `app_id=${appId}&app_trans_id=${appTransId}&app_time=${appTime}&amount=${amount}&app_user=${appUser}&description=${description}&embed_data=${embedData}&items=${items}&bank_code=${bankCode}&callback_url=${callbackUrl}`;
-
-  console.log('ZaloPay Sign Data:', rawSignature);
-
-  const mac = crypto
-    .createHmac('sha256', ZALOPAY_KEY1)
+  const rawSignature = `${appId}|${appTransId}|${appUser}|${amount}|${appTime}|${embedData}|${items}`;
+  const mac = createHmac('sha256', ZALOPAY_KEY1)
     .update(Buffer.from(rawSignature, 'utf-8'))
     .digest('hex');
 
-  const zaloParams: Record<string, string> = {
-    app_id: appId,
-    app_trans_id: appTransId,
+  const zaloParams = {
+    app_id: parseInt(appId, 10),
     app_user: appUser,
-    app_time: appTime.toString(),
-    amount,
-    description,
-    embed_data: embedData,
-    items,
+    app_time: parseInt(appTime.toString(), 10),
+    amount: parseInt(amount, 10),
+    app_trans_id: appTransId,
     bank_code: bankCode,
+    embed_data: embedData,
+    item: items,
     callback_url: callbackUrl,
+    description,
     mac,
+    return_url: input.return_url,
   };
 
-  const paymentUrl = `${ZALOPAY_REQUEST_URL}?${qs.stringify(zaloParams, { encode: true })}`;
-  console.log('ZaloPay Payment URL:', paymentUrl);
+  try {
+    console.log('ZaloPay Request Params:', zaloParams);
+    const response = await firstValueFrom(
+      httpService.post(ZALOPAY_REQUEST_URL, zaloParams)
+    );
+    const data = response.data;
+    console.log('ZaloPay Response:', data);
 
-  return paymentUrl;
+    if (data.return_code !== 1) {
+      throw new BadRequestException(
+        `Failed to create ZaloPay order: ${data.return_message} (sub_return_code: ${data.sub_return_code})`
+      );
+    }
+    return data.order_url;
+  } catch (error) {
+    console.error('ZaloPay Error:', error.response?.data || error.message);
+    throw new BadRequestException(
+      `Failed to create ZaloPay payment URL: ${error.message}`
+    );
+  }
 }

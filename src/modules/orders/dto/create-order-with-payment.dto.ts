@@ -69,4 +69,9 @@ export class CreateOrderWithPaymentDto {
   @ApiProperty({ enum: PaymentMethod, example: PaymentMethod.COD })
   @IsEnum(PaymentMethod)
   payment_method: PaymentMethod;
+
+  @ApiPropertyOptional({ example: 'http://dfjlkdh.com' })
+  @IsOptional()
+  @IsString()
+  return_url?: string;
 }

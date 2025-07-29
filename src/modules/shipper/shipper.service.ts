@@ -12,6 +12,7 @@ import { User } from '@entities/user.entity';
 import { Role } from '@common/constants/role.enum';
 import { OrdersService } from '../orders/orders.service';
 import { OrderResponseDto } from '../orders/dto/order-response.dto';
+import { NotificationsGateway } from '@modules/notifications/notifications.gateway';
 
 @Injectable()
 export class ShipperService {
@@ -20,7 +21,8 @@ export class ShipperService {
     private readonly orderRepo: Repository<Order>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
-    private readonly ordersService: OrdersService
+    private readonly ordersService: OrdersService,
+    private readonly notificationGateway: NotificationsGateway
   ) {}
 
   // Lấy danh sách các order chưa được nhận
@@ -47,7 +49,21 @@ export class ShipperService {
     order.status = 'delivering';
     order.shipper_confirmed_at = new Date();
     const saved = await this.orderRepo.save(order);
+    await this.sendOrderAcceptNotification(saved);
     return this.ordersService['mapOrderToDto'](saved);
+  }
+
+  // Gửi thông báo khi tạo đơn hàng thành công (COD)
+  private async sendOrderAcceptNotification(order: any) {
+    // Gửi socket tới user qua NotificationGateway
+    await this.notificationGateway.sendNotification(order.customer_id, {
+      title: 'Đơn hàng của bạn đã được nhận',
+      body: `Đơn hàng #${order.id} đã được nhận!`,
+      status: 2,
+      time: new Date(),
+      read: false,
+      orderId: order.id,
+    });
   }
 
   // Xem chi tiết đơn hàng
@@ -132,7 +148,21 @@ export class ShipperService {
       throw new BadRequestException('Invalid status');
     order.status = status as any;
     const saved = await this.orderRepo.save(order);
+    await this.sendOrderSuccessNotification(saved);
     return this.ordersService['mapOrderToDto'](saved);
+  }
+
+  // Gửi thông báo khi tạo đơn hàng thành công (COD)
+  private async sendOrderSuccessNotification(order: any) {
+    // Gửi socket tới user qua NotificationGateway
+    await this.notificationGateway.sendNotification(order.customer_id, {
+      title: 'Đơn hàng của bạn đã hoàn thành',
+      body: `Đơn hàng #${order.id} đã được giao!`,
+      status: 3,
+      time: new Date(),
+      read: false,
+      orderId: order.id,
+    });
   }
 
   // Lấy thông tin cá nhân shipper
