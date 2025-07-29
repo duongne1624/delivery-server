@@ -113,7 +113,7 @@ export class OrdersService {
     };
   }
 
-  async createOrder(redisKey: string, payment_id: string): Promise<string> {
+  async createOrder(redisKey: string, payment_id: string): Promise<any> {
     // Lấy dữ liệu từ Redis
     const orderDataString = await this.redis.get(redisKey);
     if (!orderDataString) {
@@ -171,7 +171,7 @@ export class OrdersService {
     // Gửi thông báo
     await this.sendOrderCreatedNotification(savedOrder);
 
-    return savedOrder.id;
+    return savedOrder;
   }
 
   // Gửi thông báo khi tạo đơn hàng thành công (COD)

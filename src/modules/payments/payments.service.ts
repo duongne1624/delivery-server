@@ -15,6 +15,7 @@ import { createMomoPaymentUrl } from '@common/payment-gateway/momo.payment';
 import { createZaloPayPaymentUrl } from '@common/payment-gateway/zalopay.payment';
 import { RedisService } from '@shared/redis/redis.service';
 import { OrdersService } from '@modules/orders/orders.service';
+import { NotificationsGateway } from '@modules/notifications/notifications.gateway';
 
 @Injectable()
 export class PaymentsService {
@@ -26,7 +27,8 @@ export class PaymentsService {
     @Inject(forwardRef(() => OrdersService))
     private readonly orderService: OrdersService,
     private httpService: HttpService,
-    private redis: RedisService
+    private redis: RedisService,
+    private readonly notificationGateway: NotificationsGateway
   ) {}
   async createPayment(
     order: Order | null,
@@ -146,9 +148,23 @@ export class PaymentsService {
 
     console.log(orderData);
 
-    await this.orderService.createOrder(redisKey, payment.id);
+    const order = await this.orderService.createOrder(redisKey, payment.id);
 
     payment.status = status === 1 ? 'success' : 'failed';
+    await this.sendOrderCreatedNotification(order);
     await this.paymentRepo.save(payment);
+  }
+
+  // Gửi thông báo khi tạo đơn hàng thành công (Online Payment)
+  private async sendOrderCreatedNotification(order: any) {
+    // Gửi socket tới user qua NotificationGateway
+    await this.notificationGateway.sendNotification(order.customer_id, {
+      title: 'Đặt đơn hàng thành công',
+      body: `Đơn hàng #${order.id} đã được tạo thành công!`,
+      status: 1,
+      time: new Date(),
+      read: false,
+      orderId: order.id,
+    });
   }
 }
