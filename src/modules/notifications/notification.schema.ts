@@ -14,6 +14,11 @@ export class Notification extends Document {
 
   @Prop({ required: true })
   status: number;
+  // 1: Đơn hàng mới
+  // 2: Đang xử lý (giao hàng)
+  // 3: Hoàn thành
+  // 4: Khuyến mãi
+  // 5: Chat
 
   @Prop({ required: true })
   time: Date;
