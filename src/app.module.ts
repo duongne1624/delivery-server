@@ -24,6 +24,7 @@ import { PaymentsModule } from '@modules/payments/payments.module';
 import { UserAddressModule } from '@modules/user-address/user-address.module';
 import { ShipperModule } from '@modules/shipper/shipper.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
+import { ChatModule } from '@modules/chats/chat.module';
 // import { FeedbackModule } from '@modules/feedback/feedback.module';
 // import { LogsModule } from '@modules/logs/logs.module';
 
@@ -47,6 +48,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     PaymentsModule,
     ShipperModule,
     NotificationsModule,
+    ChatModule,
     // FeedbackModule,
     // LogsModule,
   ],
